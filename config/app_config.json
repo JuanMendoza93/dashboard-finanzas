@@ -1,0 +1,107 @@
+{
+  "app": {
+    "name": "Dashboard Financiero",
+    "version": "2.0.0",
+    "description": "Sistema de gestión financiera personal"
+  },
+  "finances": {
+    "presupuesto_base": 10000.0,
+    "meta_mensual": 5000.0,
+    "meta_anual": 60000.0,
+    "moneda": "USD",
+    "decimales": 2
+  },
+  "ui": {
+    "tema": "light",
+    "colores": {
+      "primario": "#667eea",
+      "secundario": "#764ba2",
+      "exito": "#28a745",
+      "advertencia": "#ffc107",
+      "peligro": "#dc3545"
+    },
+    "metricas": {
+      "mostrar_graficos": true,
+      "mostrar_tablas": true,
+      "items_por_pagina": 10
+    }
+  },
+  "firebase": {
+    "timeout": 10,
+    "reintentos": 3,
+    "cache_ttl": 300
+  },
+  "validaciones": {
+    "monto_minimo": 0.01,
+    "monto_maximo": 999999.99,
+    "nombre_min_length": 2,
+    "nombre_max_length": 50,
+    "concepto_min_length": 3,
+    "concepto_max_length": 100
+  },
+  "reportes": {
+    "formato_fecha": "%d/%m/%Y",
+    "formato_moneda": "${:,.2f}",
+    "graficos_por_defecto": [
+      "gastos_por_categoria",
+      "progreso_ahorro"
+    ],
+    "exportar_formato": "excel"
+  },
+  "notificaciones": {
+    "mostrar_success": true,
+    "mostrar_errors": true,
+    "mostrar_warnings": true,
+    "auto_close_delay": 5
+  },
+  "categorias_default": [
+    "Comida",
+    "Transporte",
+    "Vivienda",
+    "Entretenimiento",
+    "Salud",
+    "Educación",
+    "Ropa",
+    "Servicios",
+    "Otros"
+  ],
+  "tipos_gasto_default": [
+    "Necesario",
+    "Innecesario",
+    "Emergencia",
+    "Lujo",
+    "Inversión",
+    "Ahorro"
+  ],
+  "metas": {
+    "ahorro_mensual_objetivo": 5000.0,
+    "ahorro_anual_objetivo": 60000.0,
+    "gasto_maximo_mensual": 8000.0,
+    "reserva_emergencia": 10000.0
+  },
+  "presupuesto": {
+    "porcentaje_ahorro": 20.0,
+    "porcentaje_gastos_fijos": 50.0,
+    "porcentaje_gastos_variables": 30.0,
+    "alerta_presupuesto": 80.0
+  },
+  "firebase_sync": {
+    "categorias": [
+      "Comida",
+      "Vivienda",
+      "Salud",
+      "Educación",
+      "Niños",
+      "Ocio",
+      "Ropa",
+      "Entretenimiento",
+      "Despensa"
+    ],
+    "tipos_gasto": [
+      "Necesario",
+      "Innecesario",
+      "Emergencia",
+      "Lujo"
+    ]
+  }
+}

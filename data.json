@@ -1,0 +1,177 @@
+{
+  "movimientos": [],
+  "cuentas": [
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "1"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "2"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "3"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "4"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "5"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "6"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "7"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "8"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "9"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "10"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "11"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "12"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "13"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "14"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "15"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "16"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "17"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "18"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "19"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "20"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "21"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "22"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "23"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "24"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "25"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "26"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "27"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "28"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "29"
+    },
+    {
+      "nombre": "Didi",
+      "saldo": 97000.0,
+      "id": "30"
+    }
+  ],
+  "metas": {
+    "meta_mensual": 10000,
+    "meta_anual": 60000
+  },
+  "configuracion": {
+    "categorias": [
+      "Comida",
+      "Transporte",
+      "Entretenimiento",
+      "Salud",
+      "Educación",
+      "Otros",
+      "Ocio",
+      "Ropa"
+    ],
+    "tipos_gasto": [
+      "Necesario",
+      "Innecesario",
+      "Emergencia",
+      "Lujo"
+    ]
+  }
+}
