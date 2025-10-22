@@ -115,11 +115,11 @@ def mostrar_gastos_recurrentes(categorias_disponibles):
                 col_edit, col_del = st.columns(2)
                 
                 with col_edit:
-                    if st.button("✏️", key=f"edit_{gasto['id']}", use_container_width=True):
+                    if st.button("✏️", key=f"edit_gasto_{gasto['id']}_{i}", use_container_width=True):
                         st.session_state[f"editando_gasto_{gasto['id']}"] = True
                 
                 with col_del:
-                    if st.button("🗑️", key=f"del_{gasto['id']}", use_container_width=True):
+                    if st.button("🗑️", key=f"del_gasto_{gasto['id']}_{i}", use_container_width=True):
                         if eliminar_gasto_recurrente(gasto['id']):
                             st.success(f"✅ Gasto '{gasto['descripcion']}' eliminado!")
                             st.rerun()

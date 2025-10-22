@@ -11,6 +11,11 @@ from utils.helpers import apply_css_styles, show_error_message
 import plotly.graph_objects as go
 import plotly.express as px
 
+@st.cache_data(ttl=300)  # Cache por 5 minutos
+def obtener_resumen_cache():
+    """Obtener resumen con cache para evitar recálculos"""
+    return ReporteService.generar_resumen_financiero()
+
 
 def mostrar_graficas_principales(resumen):
     """Mostrar gráficas principales del dashboard"""
@@ -194,7 +199,7 @@ def main():
     
     # Cargar datos
     try:
-        resumen = ReporteService.generar_resumen_financiero()
+        resumen = obtener_resumen_cache()
         configuracion = cargar_configuracion()
         
         # Cargar metas por separado

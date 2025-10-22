@@ -6,6 +6,7 @@ Página para administrar ingresos y gastos
 import streamlit as st
 from datetime import date, datetime
 from services.movimiento_service import MovimientoService
+from models.movimiento import Movimiento
 from utils.database import cargar_configuracion
 from utils.config_manager import config_manager
 from utils.helpers import apply_css_styles
@@ -25,42 +26,6 @@ def main():
     
     # Cargar configuración
     configuracion = cargar_configuracion()
-
-    # Formulario colapsable para agregar nuevo movimiento
-    with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
-        with st.form("nuevo_movimiento"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                fecha = st.date_input("📅 Fecha", value=date.today())
-                concepto = st.text_input("📝 Concepto", placeholder="Descripción del movimiento")
-                categoria = st.selectbox("🏷️ Categoría", configuracion["categorias"])
-            
-            with col2:
-                tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"])
-                monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
-                tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"])
-            
-            if st.form_submit_button("💾 Guardar Movimiento", use_container_width=True):
-                if concepto and monto > 0:
-                    # Validar duplicados
-                    movimientos_existentes = MovimientoService.obtener_por_mes(mes_seleccionado, año_seleccionado)
-                    duplicado = any(
-                        m.fecha == fecha and m.concepto == concepto and m.monto == monto
-                        for m in movimientos_existentes
-                    )
-                    
-                    if duplicado:
-                        st.error("❌ Ya existe un movimiento con la misma fecha, concepto y monto")
-                    else:
-                        movimiento = MovimientoService.crear(fecha, concepto, categoria, tipo_gasto, monto, tipo)
-                        if movimiento:
-                            st.success("✅ Movimiento guardado exitosamente!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al guardar el movimiento")
-                else:
-                    st.error("❌ Por favor completa todos los campos")
     
     st.divider()
     
@@ -80,6 +45,54 @@ def main():
     
     with col2:
         año_seleccionado = st.selectbox("Año", list(range(2020, 2030)), index=date.today().year - 2020)
+    
+    # Mover el formulario después de definir las variables
+    st.divider()
+    
+    # Formulario colapsable para agregar nuevo movimiento
+    with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
+        with st.form("nuevo_movimiento"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                concepto = st.text_input("📝 Concepto")
+                fecha = st.date_input("📅 Fecha", value=date.today())
+            
+            with col2:
+                categoria = st.selectbox("📂 Categoría", configuracion["categorias"])
+                tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"])
+                monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
+                tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"])
+            
+            if st.form_submit_button("💾 Guardar Movimiento", use_container_width=True):
+                if concepto and monto > 0:
+                    # Validar duplicados
+                    movimientos_existentes = MovimientoService.obtener_por_mes(mes_seleccionado, año_seleccionado)
+                    duplicado = any(
+                        m.fecha == fecha and m.concepto == concepto and m.monto == monto
+                        for m in movimientos_existentes
+                    )
+                    
+                    if duplicado:
+                        st.error("❌ Ya existe un movimiento con la misma fecha, concepto y monto")
+                    else:
+                        # Crear movimiento
+                        movimiento = MovimientoService.crear(
+                            fecha=fecha,
+                            concepto=concepto,
+                            categoria=categoria,
+                            tipo_gasto=tipo_gasto,
+                            monto=monto,
+                            tipo=tipo
+                        )
+                        
+                        if movimiento:
+                            st.success("✅ Movimiento agregado correctamente")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al agregar el movimiento")
+                else:
+                    st.error("❌ Por favor completa todos los campos")
     
     # Mostrar movimientos del mes seleccionado
     mostrar_movimientos(mes_seleccionado, año_seleccionado, configuracion)
@@ -143,11 +156,20 @@ def mostrar_movimientos(mes, año, configuracion):
         min-width: 2.5rem !important;
     }
     .movements-table .stColumn {
-        padding: 0.3rem !important;
+        padding: 0.4rem !important;
         min-width: 0 !important;
     }
+    .movements-table .stColumn:first-child {
+        min-width: 120px !important;
+    }
+    .movements-table .stColumn:nth-child(2) {
+        min-width: 200px !important;
+    }
+    .movements-table .stColumn:last-child {
+        min-width: 100px !important;
+    }
     .main .block-container {
-        max-width: 95% !important;
+        max-width: 98% !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -156,7 +178,7 @@ def mostrar_movimientos(mes, año, configuracion):
     for i, movimiento in enumerate(movimientos_mes):
         with st.container():
             st.markdown('<div class="movements-table">', unsafe_allow_html=True)
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([1.5, 3, 1.5, 1.5, 1.5, 1.5, 1.5])
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 4, 2, 2, 2, 2, 2])
             
             with col1:
                 st.write(f"**{movimiento.fecha.strftime('%d/%m/%Y')}**")
