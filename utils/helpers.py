@@ -7,6 +7,61 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime, date
 
 
+def mostrar_navegacion_lateral():
+    """Mostrar navegación lateral personalizada"""
+    st.sidebar.markdown("### 🧭 Navegación")
+    
+    # Obtener la página actual para resaltar el botón correspondiente
+    pagina_actual = st.query_params.get("page", "app.py")
+    
+    
+    # Botones de navegación principales
+    if st.sidebar.button("🏠 Dashboard", use_container_width=True, type="primary"):
+        navegar_a_pagina("app.py")
+    
+    if st.sidebar.button("🏦 Cuentas", use_container_width=True):
+        navegar_a_pagina("pages/1_Cuentas.py")
+    
+    if st.sidebar.button("💰 Movimientos", use_container_width=True):
+        navegar_a_pagina("pages/2_Movimientos.py")
+    
+    if st.sidebar.button("📊 Reportes", use_container_width=True):
+        navegar_a_pagina("pages/3_Reportes.py")
+    
+    if st.sidebar.button("💳 Gastos Recurrentes", use_container_width=True):
+        navegar_a_pagina("pages/4_Gastos_Recurrentes.py")
+    
+    if st.sidebar.button("🎯 Metas", use_container_width=True):
+        navegar_a_pagina("pages/5_Metas.py")
+    
+    if st.sidebar.button("⚙️ Configuración", use_container_width=True):
+        navegar_a_pagina("pages/6_Configuracion.py")
+
+
+def navegar_a_pagina(pagina: str):
+    """Navegar a una página específica usando st.switch_page (disponible en 1.50.0+)"""
+    try:
+        # Usar st.switch_page que ahora está disponible en la versión 1.50.0
+        st.switch_page(pagina)
+    except Exception as e:
+        # Si falla, mostrar error y sugerir navegación manual
+        st.error(f"Error de navegación: {str(e)}")
+        st.info(f"Por favor, navega manualmente a: {pagina}")
+        st.markdown(f"""
+        <div style="text-align: center; margin: 2rem 0;">
+            <a href="{pagina}" target="_self" style="
+                display: inline-block;
+                padding: 0.5rem 1rem;
+                background-color: #ff4b4b;
+                color: white;
+                text-decoration: none;
+                border-radius: 0.5rem;
+                font-weight: bold;
+            ">Ir a {pagina}</a>
+        </div>
+        """, unsafe_allow_html=True)
+
+
 def get_css_styles() -> str:
     """Obtener estilos CSS reutilizables"""
     return """
@@ -24,6 +79,43 @@ def get_css_styles() -> str:
     /* Ocultar solo la lista de navegación automática */
     [data-testid="stSidebar"] > div:first-child > div:nth-child(2) {
         display: none !important;
+    }
+    
+    /* Estilos para botones internos (no sidebar) */
+    .stButton > button {
+        background: #242424 !important;
+        color: white !important;
+        border: 1px solid #404040 !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+    }
+    .stButton > button:hover {
+        background: #404040 !important;
+        border-color: #606060 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    }
+    .stButton > button:active {
+        transform: translateY(0) !important;
+        background: #1a1a1a !important;
+    }
+    .stButton > button:focus {
+        box-shadow: 0 0 0 2px rgba(36, 36, 36, 0.5) !important;
+    }
+    
+    /* Sobrescribir estilos del sidebar */
+    .sidebar .stButton > button {
+        background: linear-gradient(90deg, #00d4aa 0%, #00b894 100%) !important;
+        border: none !important;
+        box-shadow: 0 2px 4px rgba(0, 212, 170, 0.3) !important;
+    }
+    .sidebar .stButton > button:hover {
+        background: linear-gradient(90deg, #00c19a 0%, #00a085 100%) !important;
+        box-shadow: 0 4px 8px rgba(0, 212, 170, 0.4) !important;
+    }
+    .sidebar .stButton > button:focus {
+        box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.5) !important;
     }
     
     .main-header {

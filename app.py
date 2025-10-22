@@ -1,26 +1,19 @@
 """
 Dashboard Financiero - Punto de entrada principal
-Refactorizado con arquitectura separada
+Refactorizado para usar navegación nativa de Streamlit
 """
 
 import streamlit as st
-from pages.cuentas import mostrar_cuentas
-from pages.movimientos import mostrar_movimientos
-from pages.reportes import mostrar_reportes
-from pages.configuracion import mostrar_configuracion
-from pages.gastos_recurrentes import mostrar_gastos_recurrentes
-from pages.metas import mostrar_metas
-from services.cuenta_service import CuentaService
 from services.reporte_service import ReporteService
 from utils.database import cargar_configuracion
-from utils.config_manager import config_manager, financial_config, ui_config
-from utils.helpers import apply_css_styles, show_success_message, show_error_message, show_fullscreen_loading, hide_fullscreen_loading
+from utils.config_manager import config_manager
+from utils.helpers import apply_css_styles, show_error_message
+import plotly.graph_objects as go
+import plotly.express as px
 
 
 def mostrar_graficas_principales(resumen):
     """Mostrar gráficas principales del dashboard"""
-    import plotly.graph_objects as go
-    import plotly.express as px
     
     st.subheader("📊 Resumen Visual")
     
@@ -50,102 +43,66 @@ def mostrar_graficas_principales(resumen):
                 )
             ])
             
-            # Agregar línea de referencia al 100%
-            fig.add_hline(y=100, line_dash="dash", line_color="red", 
-                         annotation_text="Límite del Presupuesto")
-            
             fig.update_layout(
-                title=f"Gastos del Mes: ${gastos_mes:,.2f} / ${presupuesto_total:,.2f}",
-                xaxis_title="",
-                yaxis_title="Porcentaje del Presupuesto (%)",
-                yaxis=dict(range=[0, max(porcentaje_gastado * 1.2, 100)]),
-                height=400
+                title="Gastos del Mes vs Presupuesto",
+                yaxis_title="Porcentaje (%)",
+                height=400,
+                showlegend=False
             )
-            st.plotly_chart(fig, use_container_width=True)
             
-            # Mostrar información adicional
-            if gastos_mes > presupuesto_total:
-                st.warning(f"⚠️ Te excediste del presupuesto por ${gastos_mes - presupuesto_total:,.2f}")
-            elif presupuesto_total == 0:
-                st.info("No hay presupuesto configurado")
-            else:
-                st.success(f"✅ Te quedan ${presupuesto_total - gastos_mes:,.2f} del presupuesto")            
+            # Agregar línea de 100%
+            fig.add_hline(y=100, line_dash="dash", line_color="red", 
+                         annotation_text="Límite del presupuesto")
+            
+            st.plotly_chart(fig, use_container_width=True)
+        elif presupuesto_total == 0:
+            st.info("No hay presupuesto configurado")
+        else:
+            st.info("No hay gastos registrados")
     
     with col2:
-        # Sección de progreso de ahorros
-        st.subheader("🎯 Progreso de Ahorros")
-        
-        # Obtener metas
-        meta_mensual = financial_config.get_meta_mensual()
-        meta_anual = financial_config.get_meta_anual()
+        # Gráfico de ahorro anual (velocímetro)
         ahorro_actual = resumen.get("ahorro_actual", 0)
+        meta_anual = resumen.get("meta_anual", 0)
         
-        # Mostrar métricas de ahorro
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.metric(
-                "💰 Ahorro Actual",
-                f"${ahorro_actual:,.2f}",
-                delta=f"Meta: ${meta_anual:,.2f}" if meta_anual > 0 else None
-            )
-        
-        with col_b:
-            if meta_mensual > 0:
-                progreso_mensual = min(ahorro_actual / meta_mensual, 2.0) * 100
-                st.metric(
-                    "📅 Progreso Mensual",
-                    f"{progreso_mensual:.1f}%",
-                    delta=f"Meta: ${meta_mensual:,.2f}"
-                )
-        
-        # Gráfico de progreso de ahorro anual (velocímetro)
         if meta_anual > 0:
-            progreso_anual = min(ahorro_actual / meta_anual, 2.0) * 100  # Permitir hasta 200%
+            progreso_anual = min((ahorro_actual / meta_anual) * 100, 200)
             
             fig = go.Figure(go.Indicator(
-                mode="gauge+number+delta",
-                value=progreso_anual,
-                domain={'x': [0, 1], 'y': [0, 1]},
-                title={'text': "Progreso Ahorro Anual (%)"},
-                delta={'reference': 100},
-                gauge={
-                    'axis': {'range': [0, 200]},
-                    'bar': {'color': "darkgreen"},
-                    'steps': [
-                        {'range': [0, 75], 'color': "red"},
-                        {'range': [75, 100], 'color': "orange"},
-                        {'range': [100, 150], 'color': "lightgreen"},
-                        {'range': [150, 200], 'color': "green"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "green", 'width': 4},
-                        'thickness': 0.75,
-                        'value': 100
-                    }
-                }
-            ))
-            fig.update_layout(height=300)
+                mode = "gauge+number+delta",
+                value = progreso_anual,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "Progreso Ahorro Anual (%)"},
+                delta = {'reference': 100},
+                gauge = {'axis': {'range': [None, 200]},
+                        'bar': {'color': "darkgreen"},
+                        'steps': [
+                            {'range': [0, 75], 'color': "red"},
+                            {'range': [75, 100], 'color': "orange"},
+                            {'range': [100, 150], 'color': "lightgreen"},
+                            {'range': [150, 200], 'color': "green"}],
+                        'threshold': {'line': {'color': "green", 'width': 4},
+                                    'thickness': 0.75, 'value': 100}}))
+            
+            fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
             
-            # Mostrar información adicional
-            if progreso_anual < 75:
-                st.error("🔴 Necesitas más ahorro para alcanzar tu meta")
-            elif progreso_anual < 100:
-                st.warning("🟡 Estás cerca de tu meta anual")
-            elif progreso_anual < 150:
-                st.success("🟢 ¡Excelente! Has superado tu meta anual")
+            # Mensaje dinámico
+            if progreso_anual >= 100:
+                st.success(f"🎉 ¡Excelente! Has alcanzado tu meta anual ({progreso_anual:.1f}%)")
+            elif progreso_anual >= 75:
+                st.info(f"📈 Muy bien, vas por buen camino ({progreso_anual:.1f}%)")
             else:
-                st.success("🟢 ¡Increíble! Has duplicado tu meta anual")
+                st.warning(f"⚠️ Necesita más ahorro para alcanzar la meta ({progreso_anual:.1f}%)")
         else:
-            st.info("No hay meta de ahorro configurada")
+            st.info("No hay meta anual configurada")
     
     # Gráficas de pastel lado a lado
     col_pie1, col_pie2 = st.columns(2)
     
     with col_pie1:
         # Gráfico de pastel de gastos por categoría
-        st.subheader("🥧 Gastos por Categoría")
+        st.subheader("📊 Gastos por Categoría")
         gastos_por_categoria = resumen.get("gastos_por_categoria", {})
         if gastos_por_categoria:
             fig = go.Figure(data=[
@@ -167,7 +124,7 @@ def mostrar_graficas_principales(resumen):
     
     with col_pie2:
         # Gráfico de pastel de gastos por tipo de gasto
-        st.subheader("🥧 Gastos por Tipo")
+        st.subheader("📈 Gastos por Tipo")
         gastos_por_tipo = resumen.get("gastos_por_tipo", {})
         if gastos_por_tipo:
             # Definir colores según el tipo de gasto
@@ -206,11 +163,6 @@ def mostrar_graficas_principales(resumen):
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No hay datos de gastos por tipo para mostrar")
-    
-# TOP 3 gastos ya se muestra en mostrar_graficas_principales()
-
-
-# Función eliminada - el dashboard se muestra directamente en main()
 
 
 def main():
@@ -228,19 +180,28 @@ def main():
     # Aplicar CSS personalizado desde configuraciones
     apply_css_styles()
     
-    # Header principal (solo para dashboard principal)
-    if st.session_state.get("pagina_actual", "dashboard") == "dashboard":
-        st.markdown("""
-        <div class="main-header">
-            <h1>💰 Dashboard Financiero</h1>
-            <p>Gestiona tus finanzas de manera inteligente</p>
-        </div>
-        """, unsafe_allow_html=True)
+    # Navegación lateral personalizada
+    from utils.helpers import mostrar_navegacion_lateral
+    mostrar_navegacion_lateral()
     
-    # Cargar datos sin loading que se atasca
+    # Header principal
+    st.markdown("""
+    <div class="main-header">
+        <h1>💰 Dashboard Financiero</h1>
+        <p>Gestiona tus finanzas de manera inteligente</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Cargar datos
     try:
         resumen = ReporteService.generar_resumen_financiero()
         configuracion = cargar_configuracion()
+        
+        # Cargar metas por separado
+        from utils.database import cargar_metas
+        metas = cargar_metas()
+        resumen["meta_anual"] = metas.get("meta_anual", 0)
+        resumen["meta_mensual"] = metas.get("meta_mensual", 0)
         
         # Sincronizar configuraciones con Firebase si es necesario
         if not config_manager.sync_with_firebase():
@@ -249,242 +210,124 @@ def main():
         show_error_message(f"Error cargando datos: {e}")
         return
     
-    # Solo mostrar dashboard si está seleccionado
-    if st.session_state.get("pagina_actual", "dashboard") == "dashboard":
-        # Métricas principales (saldo total, gastos del mes y presupuesto mensual)
-        col1, col2, col3 = st.columns(3)
+    # Métricas principales (saldo total, gastos del mes y presupuesto mensual)
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        saldo_total = resumen.get('saldo_total', 0)
         
-        with col1:
-            saldo_total = resumen.get('saldo_total', 0)
-            st.metric(
-                "💰 Saldo Total",
-                config_manager.get_formatted_currency(saldo_total)
-            )
-        
-        with col2:
-            gastos_mes = resumen.get('gastos_mes', 0)
-            st.metric(
-                "💸 Gastos del Mes",
-                config_manager.get_formatted_currency(gastos_mes)
-            )
-        
-        with col3:
-            # El presupuesto mensual es solo la suma de gastos recurrentes
-            gastos_recurrentes = resumen.get("gastos_recurrentes", 0)
-            st.metric(
-                "📊 Presupuesto Mensual",
-                config_manager.get_formatted_currency(gastos_recurrentes)
-            )
-        
-        st.divider()
-        
-        # Gráficas principales del dashboard
-        if ui_config.should_show_charts():
-            mostrar_graficas_principales(resumen)
-        
-        st.divider()
-        
-        # TOP 3 gastos del mes
-        st.subheader("🔥 TOP 3 Categorías con Más Gastos")
-        top_gastos = resumen.get("top_gastos", [])
-        if top_gastos:
-            for i, gasto in enumerate(top_gastos, 1):
-                if isinstance(gasto, dict):
-                    # Nuevo formato: categoría con total
-                    st.write(f"**#{i}** 🏷️ {gasto['categoria']} - {config_manager.get_formatted_currency(gasto['total'])}")
-                else:
-                    # Formato anterior: movimiento individual
-                    st.write(f"**#{i}** 💸 {gasto.concepto} - {config_manager.get_formatted_currency(gasto.monto_absoluto)} ({gasto.categoria})")
+        # Determinar color e icono según el saldo
+        if saldo_total >= 100000:
+            color = "green"
+            icono = "💚"
         else:
-            st.info("No hay gastos registrados")
+            color = "red"
+            icono = "🔴"
         
-        st.divider()
+        # Mostrar métrica con color personalizado (texto grande como original)
+        st.markdown(f"""
+        <div style="
+            background: {'#d4edda' if saldo_total >= 100000 else '#f8d7da'};
+            border: 2px solid {'#28a745' if saldo_total >= 100000 else '#dc3545'};
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            margin: 0.5rem 0;
+        ">
+            <h3 style="color: {'#155724' if saldo_total >= 100000 else '#721c24'}; margin: 0;">
+                {icono} Saldo Total
+            </h3>
+            <h2 style="color: {'#155724' if saldo_total >= 100000 else '#721c24'}; margin: 0.5rem 0;">
+                {config_manager.get_formatted_currency(saldo_total)}
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Navegación principal
-    st.sidebar.markdown("### 🧭 Navegación")
+    with col2:
+        gastos_mes = resumen.get('gastos_mes', 0)
+        gastos_recurrentes = resumen.get('gastos_recurrentes', 0)
+        
+        # Calcular porcentaje de gasto del presupuesto
+        if gastos_recurrentes > 0:
+            porcentaje_gasto = (gastos_mes / gastos_recurrentes) * 100
+        else:
+            porcentaje_gasto = 0
+        
+        # Determinar color e icono según el porcentaje de gasto
+        if porcentaje_gasto >= 100:
+            color_gasto = "red"
+            icono_gasto = "🔴"
+        elif porcentaje_gasto >= 80:
+            color_gasto = "orange"
+            icono_gasto = "🟠"
+        elif porcentaje_gasto >= 50:
+            color_gasto = "yellow"
+            icono_gasto = "🟡"
+        else:
+            color_gasto = "green"
+            icono_gasto = "🟢"
+        
+        # Mostrar métrica de gastos con color personalizado
+        st.markdown(f"""
+        <div style="
+            background: {'#f8d7da' if porcentaje_gasto >= 100 else '#fff3cd' if porcentaje_gasto >= 80 else '#d1ecf1' if porcentaje_gasto >= 50 else '#d4edda'};
+            border: 2px solid {'#dc3545' if porcentaje_gasto >= 100 else '#ffc107' if porcentaje_gasto >= 80 else '#17a2b8' if porcentaje_gasto >= 50 else '#28a745'};
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            margin: 0.5rem 0;
+        ">
+            <h3 style="color: {'#721c24' if porcentaje_gasto >= 100 else '#856404' if porcentaje_gasto >= 80 else '#0c5460' if porcentaje_gasto >= 50 else '#155724'}; margin: 0;">
+                {icono_gasto} Gastos del Mes
+            </h3>
+            <h2 style="color: {'#721c24' if porcentaje_gasto >= 100 else '#856404' if porcentaje_gasto >= 80 else '#0c5460' if porcentaje_gasto >= 50 else '#155724'}; margin: 0.5rem 0;">
+                {config_manager.get_formatted_currency(gastos_mes)}
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Obtener página actual
-    pagina_actual = st.session_state.get("pagina_actual", "dashboard")
+    with col3:
+        gastos_recurrentes = resumen.get('gastos_recurrentes', 0)
+        
+        # Mostrar métrica de presupuesto con el mismo estilo
+        st.markdown(f"""
+        <div style="
+            background: #e2e3e5;
+            border: 2px solid #6c757d;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            margin: 0.5rem 0;
+        ">
+            <h3 style="color: #495057; margin: 0;">
+                📊 Presupuesto Mensual
+            </h3>
+            <h2 style="color: #495057; margin: 0.5rem 0;">
+                {config_manager.get_formatted_currency(gastos_recurrentes)}
+            </h2>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Botones de navegación
-    if st.sidebar.button("🏠 Dashboard", use_container_width=True, type="primary" if pagina_actual == "dashboard" else "secondary"):
-        st.session_state["pagina_actual"] = "dashboard"
-        st.rerun()
+    st.divider()
     
-    if st.sidebar.button("🏦 Cuentas", use_container_width=True, type="primary" if pagina_actual == "cuentas" else "secondary"):
-        st.session_state["pagina_actual"] = "cuentas"
-        st.rerun()
+    # Mostrar gráficas principales
+    mostrar_graficas_principales(resumen)
     
-    if st.sidebar.button("💰 Movimientos", use_container_width=True, type="primary" if pagina_actual == "movimientos" else "secondary"):
-        st.session_state["pagina_actual"] = "movimientos"
-        st.rerun()
+    st.divider()
     
-    if st.sidebar.button("📊 Reportes", use_container_width=True, type="primary" if pagina_actual == "reportes" else "secondary"):
-        st.session_state["pagina_actual"] = "reportes"
-        st.rerun()
+    # TOP 3 gastos del mes
+    st.subheader("🏆 TOP 3 Gastos del Mes")
+    top_gastos = resumen.get("top_gastos", [])
     
-    if st.sidebar.button("💳 Gastos Recurrentes", use_container_width=True, type="primary" if pagina_actual == "gastos_recurrentes" else "secondary"):
-        st.session_state["pagina_actual"] = "gastos_recurrentes"
-        st.rerun()
-    
-    if st.sidebar.button("🎯 Metas", use_container_width=True, type="primary" if pagina_actual == "metas" else "secondary"):
-        st.session_state["pagina_actual"] = "metas"
-        st.rerun()
-    
-    if st.sidebar.button("⚙️ Configuración", use_container_width=True, type="primary" if pagina_actual == "configuracion" else "secondary"):
-        st.session_state["pagina_actual"] = "configuracion"
-        st.rerun()
-    
-    if st.sidebar.button("🔥 Prueba Firebase", use_container_width=True, type="primary" if pagina_actual == "firebase_test" else "secondary"):
-        st.session_state["pagina_actual"] = "firebase_test"
-        st.rerun()
-    
-    # Debug: Mostrar página actual
-    st.sidebar.write(f"Página actual: {pagina_actual}")
-    
-    if pagina_actual == "dashboard":
-        # Dashboard principal (ya se muestra arriba)
-        pass
-    elif pagina_actual == "cuentas":
-        mostrar_cuentas()
-    elif pagina_actual == "movimientos":
-        mostrar_movimientos()
-    elif pagina_actual == "reportes":
-        mostrar_reportes()
-    elif pagina_actual == "gastos_recurrentes":
-        mostrar_gastos_recurrentes()
-    elif pagina_actual == "metas":
-        mostrar_metas()
-    elif pagina_actual == "configuracion":
-        mostrar_configuracion()
-    elif pagina_actual == "firebase_test":
-        mostrar_firebase_test()
+    if top_gastos:
+        for i, gasto in enumerate(top_gastos[:3], 1):
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.write(f"**#{i}**")
+            with col2:
+                st.write(f"🏷️ {gasto['categoria']}: {config_manager.get_formatted_currency(gasto['total'])}")
     else:
-        # Página por defecto (dashboard)
-        pass
-
-
-def mostrar_configuracion():
-    """Mostrar página de configuración"""
-    st.title("⚙️ Configuración del Sistema")
-    
-    configuracion = cargar_configuracion()
-    
-    # Gestión de categorías
-    st.subheader("🏷️ Categorías de Gastos")
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        nueva_categoria = st.text_input("➕ Nueva Categoría", placeholder="Ej: Ropa, Deportes, etc.")
-    with col2:
-        if st.button("➕ Agregar", use_container_width=True):
-            if nueva_categoria and nueva_categoria not in configuracion["categorias"]:
-                configuracion["categorias"].append(nueva_categoria)
-                from utils.database import guardar_configuracion
-                if guardar_configuracion(configuracion):
-                    st.success(f"✅ Categoría '{nueva_categoria}' agregada!")
-                    # No usar st.rerun() para evitar ejecución doble
-                else:
-                    st.error("❌ Error al guardar la categoría")
-            elif nueva_categoria in configuracion["categorias"]:
-                st.error("❌ Esta categoría ya existe")
-            else:
-                st.error("❌ Por favor ingresa un nombre")
-    
-    # Lista de categorías
-    st.write("**Categorías actuales:**")
-    cols = st.columns(3)
-    for i, categoria in enumerate(configuracion["categorias"]):
-        with cols[i % 3]:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"🏷️ {categoria}")
-            with col2:
-                if st.button("🗑️", key=f"del_cat_{categoria}"):
-                    configuracion["categorias"].remove(categoria)
-                    from utils.database import guardar_configuracion
-                    guardar_configuracion(configuracion)
-                    st.success(f"✅ Categoría '{categoria}' eliminada!")
-                    st.rerun()
-    
-    st.divider()
-    
-    # Gestión de tipos de gasto
-    st.subheader("🔍 Tipos de Gasto")
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        nuevo_tipo = st.text_input("➕ Nuevo Tipo de Gasto", placeholder="Ej: Inversión, Ahorro, etc.")
-    with col2:
-        if st.button("➕ Agregar Tipo", use_container_width=True):
-            if nuevo_tipo and nuevo_tipo not in configuracion["tipos_gasto"]:
-                configuracion["tipos_gasto"].append(nuevo_tipo)
-                from utils.database import guardar_configuracion
-                if guardar_configuracion(configuracion):
-                    st.success(f"✅ Tipo '{nuevo_tipo}' agregado!")
-                    # No usar st.rerun() para evitar ejecución doble
-                else:
-                    st.error("❌ Error al guardar el tipo")
-            elif nuevo_tipo in configuracion["tipos_gasto"]:
-                st.error("❌ Este tipo ya existe")
-            else:
-                st.error("❌ Por favor ingresa un nombre")
-    
-    # Lista de tipos de gasto
-    st.write("**Tipos de gasto actuales:**")
-    cols = st.columns(3)
-    for i, tipo in enumerate(configuracion["tipos_gasto"]):
-        with cols[i % 3]:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.write(f"🔍 {tipo}")
-            with col2:
-                if st.button("🗑️", key=f"del_tipo_{tipo}"):
-                    configuracion["tipos_gasto"].remove(tipo)
-                    from utils.database import guardar_configuracion
-                    guardar_configuracion(configuracion)
-                    st.success(f"✅ Tipo '{tipo}' eliminado!")
-                    st.rerun()
-    
-    st.divider()
-    st.info("💡 **Tip:** Los cambios en categorías y tipos se aplicarán inmediatamente en todos los formularios.")
-
-
-def mostrar_firebase_test():
-    """Mostrar página de prueba de Firebase"""
-    st.title("🔥 Prueba de Conexión Firebase")
-    
-    st.subheader("🧪 Verificar Conexión a Firebase")
-    
-    if st.button("🚀 Probar Conexión Firebase"):
-        try:
-            from utils.database import firebase_get, firebase_push, FIREBASE_URL
-            from datetime import datetime
-            
-            st.write(f"**URL Firebase:** `{FIREBASE_URL}`")
-            
-            # Probar GET
-            st.write("**1. Probando GET...**")
-            data = firebase_get("test")
-            st.write(f"Resultado GET: {data}")
-            
-            # Probar PUSH
-            st.write("**2. Probando PUSH...**")
-            test_data = {
-                "mensaje": "Prueba desde Streamlit",
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "funcionando": True
-            }
-            result = firebase_push("test", test_data)
-            st.write(f"Resultado PUSH: {result}")
-            
-            if result:
-                st.success("✅ Firebase está funcionando correctamente!")
-            else:
-                st.error("❌ Firebase no está respondiendo")
-                
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
+        st.info("No hay gastos registrados")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,255 @@
+"""
+Gestión de Movimientos Financieros
+Página para administrar ingresos y gastos
+"""
+
+import streamlit as st
+from datetime import date, datetime
+from services.movimiento_service import MovimientoService
+from utils.database import cargar_configuracion
+from utils.config_manager import config_manager
+from utils.helpers import apply_css_styles
+
+
+def main():
+    """Función principal de la página de movimientos"""
+    
+    # Aplicar CSS personalizado
+    apply_css_styles()
+    
+    # Navegación lateral personalizada
+    from utils.helpers import mostrar_navegacion_lateral
+    mostrar_navegacion_lateral()
+    
+    st.title("💰 Gestión de Movimientos")
+    
+    # Cargar configuración
+    configuracion = cargar_configuracion()
+
+    # Formulario colapsable para agregar nuevo movimiento
+    with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
+        with st.form("nuevo_movimiento"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fecha = st.date_input("📅 Fecha", value=date.today())
+                concepto = st.text_input("📝 Concepto", placeholder="Descripción del movimiento")
+                categoria = st.selectbox("🏷️ Categoría", configuracion["categorias"])
+            
+            with col2:
+                tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"])
+                monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
+                tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"])
+            
+            if st.form_submit_button("💾 Guardar Movimiento", use_container_width=True):
+                if concepto and monto > 0:
+                    # Validar duplicados
+                    movimientos_existentes = MovimientoService.obtener_por_mes(mes_seleccionado, año_seleccionado)
+                    duplicado = any(
+                        m.fecha == fecha and m.concepto == concepto and m.monto == monto
+                        for m in movimientos_existentes
+                    )
+                    
+                    if duplicado:
+                        st.error("❌ Ya existe un movimiento con la misma fecha, concepto y monto")
+                    else:
+                        movimiento = MovimientoService.crear(fecha, concepto, categoria, tipo_gasto, monto, tipo)
+                        if movimiento:
+                            st.success("✅ Movimiento guardado exitosamente!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al guardar el movimiento")
+                else:
+                    st.error("❌ Por favor completa todos los campos")
+    
+    st.divider()
+    
+    # Filtros por mes y año
+    st.subheader("📅 Filtros")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Crear lista de meses con nombres
+        nombres_meses = [
+            "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+            "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        ]
+        mes_seleccionado = st.selectbox("Mes", nombres_meses, index=date.today().month - 1)
+        # Convertir nombre a número para el procesamiento
+        mes_seleccionado = nombres_meses.index(mes_seleccionado) + 1
+    
+    with col2:
+        año_seleccionado = st.selectbox("Año", list(range(2020, 2030)), index=date.today().year - 2020)
+    
+    # Mostrar movimientos del mes seleccionado
+    mostrar_movimientos(mes_seleccionado, año_seleccionado, configuracion)
+
+
+def mostrar_movimientos(mes, año, configuracion):
+    """Mostrar movimientos del mes con opciones de edición y eliminación"""
+    
+    # Convertir número de mes a nombre
+    nombres_meses = {
+        1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+        5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+        9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+    }
+    
+    nombre_mes = nombres_meses.get(mes, f"Mes {mes}")
+    st.subheader(f"📋 Movimientos de {nombre_mes} de {año}")
+    
+    # Obtener movimientos del mes
+    movimientos_mes = MovimientoService.obtener_por_mes(mes, año)
+    
+    if not movimientos_mes:
+        st.info("No hay movimientos registrados para este mes.")
+        return
+    
+    # Ordenar por fecha descendente
+    movimientos_mes.sort(key=lambda x: x.fecha, reverse=True)
+    
+    # CSS para mejorar la tabla de movimientos (más ancha y legible)
+    st.markdown("""
+    <style>
+    .movements-table {
+        line-height: 1.3 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    .movements-table .stMarkdown {
+        margin: 0 !important;
+        padding: 0.5rem 0.3rem !important;
+        word-wrap: break-word !important;
+    }
+    .movements-table p {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1.3 !important;
+        font-size: 1rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .movements-table .stButton {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .movements-table .stButton > button {
+        padding: 0.4rem 0.8rem !important;
+        font-size: 0.9rem !important;
+        margin: 0 !important;
+        min-height: 2.2rem !important;
+        min-width: 2.5rem !important;
+    }
+    .movements-table .stColumn {
+        padding: 0.3rem !important;
+        min-width: 0 !important;
+    }
+    .main .block-container {
+        max-width: 95% !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Crear tabla personalizada con botones (más ancha)
+    for i, movimiento in enumerate(movimientos_mes):
+        with st.container():
+            st.markdown('<div class="movements-table">', unsafe_allow_html=True)
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([1.5, 3, 1.5, 1.5, 1.5, 1.5, 1.5])
+            
+            with col1:
+                st.write(f"**{movimiento.fecha.strftime('%d/%m/%Y')}**")
+            
+            with col2:
+                st.write(f"**{movimiento.concepto}**")
+            
+            with col3:
+                st.write(f"{movimiento.categoria}")
+            
+            with col4:
+                st.write(f"{movimiento.tipo}")
+            
+            with col5:
+                st.write(f"**${movimiento.monto:,.2f}**")
+            
+            with col6:
+                st.write(f"{movimiento.tipo_gasto}")
+            
+            with col7:
+                col_edit, col_del = st.columns(2)
+                with col_edit:
+                    if st.button("✏️", key=f"edit_{movimiento.id}", help="Editar"):
+                        st.session_state[f"editando_movimiento_{movimiento.id}"] = True
+                with col_del:
+                    if st.button("🗑️", key=f"del_{movimiento.id}", help="Eliminar"):
+                        if MovimientoService.eliminar(movimiento.id):
+                            st.success(f"✅ Movimiento eliminado!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al eliminar el movimiento")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Separador entre filas
+            if i < len(movimientos_mes) - 1:
+                st.markdown("<hr style='margin: 2px 0; border: none; border-top: 1px solid #ccc;'>", unsafe_allow_html=True)
+    
+    # Formulario de edición (se muestra si hay algún movimiento en edición)
+    movimiento_en_edicion = None
+    for movimiento in movimientos_mes:
+        if st.session_state.get(f"editando_movimiento_{movimiento.id}", False):
+            movimiento_en_edicion = movimiento
+            break
+    
+    if movimiento_en_edicion:
+        st.markdown("---")
+        st.subheader(f"✏️ Editando: {movimiento_en_edicion.concepto}")
+        
+        with st.form(f"edit_movimiento_{movimiento_en_edicion.id}"):
+            col1, col2 = st.columns(2)
+            with col1:
+                nueva_fecha = st.date_input("📅 Fecha", value=movimiento_en_edicion.fecha, key=f"edit_fecha_{movimiento_en_edicion.id}")
+                nuevo_concepto = st.text_input("📝 Concepto", value=movimiento_en_edicion.concepto, key=f"edit_concepto_{movimiento_en_edicion.id}")
+                nueva_categoria = st.selectbox("🏷️ Categoría", configuracion["categorias"], 
+                                            index=configuracion["categorias"].index(movimiento_en_edicion.categoria) 
+                                            if movimiento_en_edicion.categoria in configuracion["categorias"] else 0, 
+                                            key=f"edit_categoria_{movimiento_en_edicion.id}")
+            with col2:
+                nuevo_tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"], 
+                                             index=configuracion["tipos_gasto"].index(movimiento_en_edicion.tipo_gasto) 
+                                             if movimiento_en_edicion.tipo_gasto in configuracion["tipos_gasto"] else 0, 
+                                             key=f"edit_tipo_gasto_{movimiento_en_edicion.id}")
+                nuevo_monto = st.number_input("💰 Monto", value=float(movimiento_en_edicion.monto), 
+                                           min_value=0.0, step=0.01, key=f"edit_monto_{movimiento_en_edicion.id}")
+                nuevo_tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"], 
+                                    index=0 if movimiento_en_edicion.tipo == "Gasto" else 1, 
+                                    key=f"edit_tipo_{movimiento_en_edicion.id}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.form_submit_button("💾 Guardar Cambios", use_container_width=True):
+                    datos_actualizados = {
+                        "fecha": nueva_fecha.isoformat(),
+                        "concepto": nuevo_concepto,
+                        "categoria": nueva_categoria,
+                        "tipo_gasto": nuevo_tipo_gasto,
+                        "monto": nuevo_monto,
+                        "tipo": nuevo_tipo
+                    }
+                    
+                    if MovimientoService.actualizar(movimiento_en_edicion.id, datos_actualizados):
+                        st.success("✅ Movimiento actualizado exitosamente!")
+                        st.session_state[f"editando_movimiento_{movimiento_en_edicion.id}"] = False
+                        st.rerun()
+                    else:
+                        st.error("❌ Error al actualizar el movimiento")
+            
+            with col2:
+                if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                    st.session_state[f"editando_movimiento_{movimiento_en_edicion.id}"] = False
+                    st.rerun()
+
+
+if __name__ == "__main__":
+    main()

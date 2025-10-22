@@ -274,3 +274,36 @@ def agregar_dinero_cuenta(cuenta_id, monto):
         save_data(data)
         return True
     return False
+
+
+def cargar_metas():
+    """Cargar metas de ahorro"""
+    try:
+        # Intentar cargar desde Firebase
+        metas = firebase_get("metas")
+        if metas:
+            return metas
+        
+        # Fallback a datos locales
+        data = load_data()
+        return data.get("metas", {"meta_mensual": 0, "meta_anual": 0})
+    except Exception as e:
+        print(f"Error cargando metas: {e}")
+        return {"meta_mensual": 0, "meta_anual": 0}
+
+
+def guardar_metas(metas):
+    """Guardar metas de ahorro"""
+    try:
+        # Intentar guardar en Firebase
+        if firebase_set("metas", metas):
+            return True
+        
+        # Fallback a datos locales
+        data = load_data()
+        data["metas"] = metas
+        save_data(data)
+        return True
+    except Exception as e:
+        print(f"Error guardando metas: {e}")
+        return False
