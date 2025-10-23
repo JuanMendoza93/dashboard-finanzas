@@ -11,10 +11,6 @@ from utils.helpers import apply_css_styles, show_error_message
 import plotly.graph_objects as go
 import plotly.express as px
 
-@st.cache_data(ttl=300)  # Cache por 5 minutos
-def obtener_resumen_cache():
-    """Obtener resumen con cache para evitar recálculos"""
-    return ReporteService.generar_resumen_financiero()
 
 
 def mostrar_graficas_principales(resumen):
@@ -33,24 +29,32 @@ def mostrar_graficas_principales(resumen):
         presupuesto_total = gastos_recurrentes
         
         if presupuesto_total > 0:
-            # Calcular porcentaje gastado
-            porcentaje_gastado = min((gastos_mes / presupuesto_total) * 100, 100)
+            # Calcular porcentaje gastado (sin límite de 100%)
+            porcentaje_gastado = (gastos_mes / presupuesto_total) * 100
+            
+            # Determinar color según si se superó el presupuesto
+            color_barra = 'red' if porcentaje_gastado > 100 else 'lightblue'
+            estado = "🔴 SUPERADO" if porcentaje_gastado > 100 else "🟢 DENTRO DEL PRESUPUESTO"
             
             # Crear gráfico de una sola barra
             fig = go.Figure(data=[
                 go.Bar(
                     x=['Gastos del Mes'],
                     y=[porcentaje_gastado],
-                    marker_color='red' if porcentaje_gastado > 100 else 'lightblue',
-                    text=[f"{porcentaje_gastado:.1f}%"],
+                    marker_color=color_barra,
+                    text=[f"{porcentaje_gastado:.1f}%<br>{estado}"],
                     textposition='auto',
                     width=0.5
                 )
             ])
             
+            # Configurar límite del eje Y dinámico
+            y_max = max(porcentaje_gastado * 1.1, 120)  # 10% más del valor o mínimo 120%
+            
             fig.update_layout(
                 title="Gastos del Mes vs Presupuesto",
                 yaxis_title="Porcentaje (%)",
+                yaxis=dict(range=[0, y_max]),
                 height=400,
                 showlegend=False
             )
@@ -199,7 +203,7 @@ def main():
     
     # Cargar datos
     try:
-        resumen = obtener_resumen_cache()
+        resumen = ReporteService.generar_resumen_financiero()
         configuracion = cargar_configuracion()
         
         # Cargar metas por separado
@@ -321,12 +325,12 @@ def main():
     st.divider()
     
     # TOP 3 gastos del mes
-    st.subheader("🏆 TOP 3 Gastos del Mes")
+    st.subheader("🏆 TOP 5 Gastos del Mes")
     top_gastos = resumen.get("top_gastos", [])
     
     if top_gastos:
-        for i, gasto in enumerate(top_gastos[:3], 1):
-            col1, col2 = st.columns([1, 3])
+        for i, gasto in enumerate(top_gastos[:5], 1):
+            col1, col2 = st.columns([1, 5])
             with col1:
                 st.write(f"**#{i}**")
             with col2:

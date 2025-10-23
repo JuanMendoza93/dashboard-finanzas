@@ -121,6 +121,37 @@ def mostrar_movimientos(mes, año, configuracion):
     # Ordenar por fecha descendente
     movimientos_mes.sort(key=lambda x: x.fecha, reverse=True)
     
+    # Calcular totales
+    total_gastos = sum(m.monto for m in movimientos_mes if m.tipo == "Gasto")
+    total_ingresos = sum(m.monto for m in movimientos_mes if m.tipo == "Ingreso")
+    saldo_mes = total_ingresos - total_gastos
+    
+    # Mostrar resumen de totales
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "💸 Total Gastos",
+            config_manager.get_formatted_currency(total_gastos),
+            delta=None
+        )
+    
+    with col2:
+        st.metric(
+            "💰 Total Ingresos", 
+            config_manager.get_formatted_currency(total_ingresos),
+            delta=None
+        )
+    
+    with col3:
+        st.metric(
+            "📈 Saldo del Mes",
+            config_manager.get_formatted_currency(saldo_mes),
+            delta=None
+        )
+    
+    st.divider()
+    
     # CSS para mejorar la tabla de movimientos (más ancha y legible)
     st.markdown("""
     <style>

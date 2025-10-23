@@ -36,7 +36,7 @@ class ReporteService:
             ahorro_actual = ingresos_mes - gastos_mes
             
             # Top gastos
-            top_gastos = MovimientoService.obtener_top_gastos(3)
+            top_gastos = MovimientoService.obtener_top_gastos(5)
             
             # Gastos por categoría
             gastos_por_categoria = MovimientoService.obtener_gastos_por_categoria(ahora.month, ahora.year)
@@ -70,24 +70,9 @@ class ReporteService:
             from utils.database import cargar_gastos_recurrentes
             gastos_recurrentes = cargar_gastos_recurrentes()
             
-            # Calcular el total mensual de todos los gastos recurrentes
-            total_mensual = 0.0
-            for gasto in gastos_recurrentes:
-                monto = gasto.get("monto", 0)
-                periodicidad = gasto.get("periodicidad", "Mensual")
-                
-                # Convertir a monto mensual según la periodicidad
-                factores = {
-                    "Semanal": 4.33,  # 52 semanas / 12 meses
-                    "Quincenal": 2.17,  # 26 quincenas / 12 meses
-                    "Mensual": 1.0,
-                    "Bimestral": 0.5,  # 6 bimestres / 12 meses
-                    "Trimestral": 0.33,  # 4 trimestres / 12 meses
-                    "Anual": 0.083  # 1 año / 12 meses
-                }
-                
-                factor = factores.get(periodicidad, 1.0)
-                total_mensual += monto * factor
+            # Usar el mismo cálculo que en la página de Gastos Recurrentes
+            # Sumar directamente monto_mensual (ya convertido)
+            total_mensual = sum(gasto.get("monto_mensual", 0) for gasto in gastos_recurrentes)
             
             return total_mensual
         except Exception as e:
