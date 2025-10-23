@@ -51,6 +51,17 @@ def main():
     
     # Formulario colapsable para agregar nuevo movimiento
     with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
+        # Botones para agregar nuevas opciones (fuera del formulario)
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("➕ Nueva Categoría", help="Agregar nueva categoría", key="add_categoria"):
+                st.session_state["agregando_categoria"] = True
+        with col_btn2:
+            if st.button("➕ Nuevo Tipo de Gasto", help="Agregar nuevo tipo de gasto", key="add_tipo_gasto"):
+                st.session_state["agregando_tipo_gasto"] = True
+        
+        st.divider()
+        
         with st.form("nuevo_movimiento"):
             col1, col2 = st.columns(2)
             
@@ -94,6 +105,61 @@ def main():
                 else:
                     st.error("❌ Por favor completa todos los campos")
     
+    # Formularios para agregar nuevas categorías y tipos de gasto
+    if st.session_state.get("agregando_categoria", False):
+        st.markdown("---")
+        st.subheader("➕ Agregar Nueva Categoría")
+        with st.form("nueva_categoria"):
+            nueva_categoria = st.text_input("📂 Nombre de la nueva categoría", placeholder="Ej: Entretenimiento, Salud, etc.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.form_submit_button("💾 Agregar Categoría", use_container_width=True):
+                    if nueva_categoria and nueva_categoria not in configuracion["categorias"]:
+                        # Agregar a la configuración
+                        configuracion["categorias"].append(nueva_categoria)
+                        from utils.database import guardar_configuracion
+                        if guardar_configuracion(configuracion):
+                            st.success(f"✅ Categoría '{nueva_categoria}' agregada correctamente")
+                            st.session_state["agregando_categoria"] = False
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al guardar la categoría")
+                    elif nueva_categoria in configuracion["categorias"]:
+                        st.error("❌ Esta categoría ya existe")
+                    else:
+                        st.error("❌ Por favor ingresa un nombre válido")
+            with col2:
+                if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                    st.session_state["agregando_categoria"] = False
+                    st.rerun()
+    
+    if st.session_state.get("agregando_tipo_gasto", False):
+        st.markdown("---")
+        st.subheader("➕ Agregar Nuevo Tipo de Gasto")
+        with st.form("nuevo_tipo_gasto"):
+            nuevo_tipo_gasto = st.text_input("🔍 Nombre del nuevo tipo de gasto", placeholder="Ej: Emergencia, Inversión, etc.")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.form_submit_button("💾 Agregar Tipo de Gasto", use_container_width=True):
+                    if nuevo_tipo_gasto and nuevo_tipo_gasto not in configuracion["tipos_gasto"]:
+                        # Agregar a la configuración
+                        configuracion["tipos_gasto"].append(nuevo_tipo_gasto)
+                        from utils.database import guardar_configuracion
+                        if guardar_configuracion(configuracion):
+                            st.success(f"✅ Tipo de gasto '{nuevo_tipo_gasto}' agregado correctamente")
+                            st.session_state["agregando_tipo_gasto"] = False
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al guardar el tipo de gasto")
+                    elif nuevo_tipo_gasto in configuracion["tipos_gasto"]:
+                        st.error("❌ Este tipo de gasto ya existe")
+                    else:
+                        st.error("❌ Por favor ingresa un nombre válido")
+            with col2:
+                if st.form_submit_button("❌ Cancelar", use_container_width=True):
+                    st.session_state["agregando_tipo_gasto"] = False
+                    st.rerun()
+    
     # Mostrar movimientos del mes seleccionado
     mostrar_movimientos(mes_seleccionado, año_seleccionado, configuracion)
 
@@ -120,6 +186,37 @@ def mostrar_movimientos(mes, año, configuracion):
     
     # Ordenar por fecha descendente
     movimientos_mes.sort(key=lambda x: x.fecha, reverse=True)
+    
+    # Calcular totales
+    total_gastos = sum(m.monto for m in movimientos_mes if m.tipo == "Gasto")
+    total_ingresos = sum(m.monto for m in movimientos_mes if m.tipo == "Ingreso")
+    saldo_mes = total_ingresos - total_gastos
+    
+    # Mostrar resumen de totales
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric(
+            "💸 Total Gastos",
+            config_manager.get_formatted_currency(total_gastos),
+            delta=None
+        )
+    
+    with col2:
+        st.metric(
+            "💰 Total Ingresos", 
+            config_manager.get_formatted_currency(total_ingresos),
+            delta=None
+        )
+    
+    with col3:
+        st.metric(
+            "📈 Saldo del Mes",
+            config_manager.get_formatted_currency(saldo_mes),
+            delta=None
+        )
+    
+    st.divider()
     
     # CSS para mejorar la tabla de movimientos (más ancha y legible)
     st.markdown("""

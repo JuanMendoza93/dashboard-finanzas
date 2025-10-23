@@ -92,11 +92,13 @@
       "Salud",
       "Educación",
       "Niños",
-      "Ocio",
       "Ropa",
       "Entretenimiento",
       "Despensa",
-      "Servicios"
+      "Servicios",
+      "Transporte/Gasolina",
+      "Ocio",
+      "Ingreso"
     ],
     "tipos_gasto": [
       "Necesario",

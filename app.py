@@ -11,10 +11,6 @@ from utils.helpers import apply_css_styles, show_error_message
 import plotly.graph_objects as go
 import plotly.express as px
 
-@st.cache_data(ttl=300)  # Cache por 5 minutos
-def obtener_resumen_cache():
-    """Obtener resumen con cache para evitar recálculos"""
-    return ReporteService.generar_resumen_financiero()
 
 
 def mostrar_graficas_principales(resumen):
@@ -33,24 +29,32 @@ def mostrar_graficas_principales(resumen):
         presupuesto_total = gastos_recurrentes
         
         if presupuesto_total > 0:
-            # Calcular porcentaje gastado
-            porcentaje_gastado = min((gastos_mes / presupuesto_total) * 100, 100)
+            # Calcular porcentaje gastado (sin límite de 100%)
+            porcentaje_gastado = (gastos_mes / presupuesto_total) * 100
+            
+            # Determinar color según si se superó el presupuesto
+            color_barra = 'red' if porcentaje_gastado > 100 else 'lightblue'
+            estado = "🔴 SUPERADO" if porcentaje_gastado > 100 else "🟢 DENTRO DEL PRESUPUESTO"
             
             # Crear gráfico de una sola barra
             fig = go.Figure(data=[
                 go.Bar(
                     x=['Gastos del Mes'],
                     y=[porcentaje_gastado],
-                    marker_color='red' if porcentaje_gastado > 100 else 'lightblue',
-                    text=[f"{porcentaje_gastado:.1f}%"],
+                    marker_color=color_barra,
+                    text=[f"{porcentaje_gastado:.1f}%<br>{estado}"],
                     textposition='auto',
                     width=0.5
                 )
             ])
             
+            # Configurar límite del eje Y dinámico
+            y_max = max(porcentaje_gastado * 1.1, 120)  # 10% más del valor o mínimo 120%
+            
             fig.update_layout(
                 title="Gastos del Mes vs Presupuesto",
                 yaxis_title="Porcentaje (%)",
+                yaxis=dict(range=[0, y_max]),
                 height=400,
                 showlegend=False
             )
@@ -173,14 +177,18 @@ def mostrar_graficas_principales(resumen):
 def main():
     """Función principal del dashboard"""
     
-    # Configuración de la página desde configuraciones centralizadas
-    app_config = config_manager.get_config("app")
-    st.set_page_config(
-        page_title=app_config.get("name", "Dashboard Finanzas"),
-        page_icon="💰",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+    # Verificar si ya se inicializó para evitar recargas
+    if "dashboard_initialized" not in st.session_state:
+        st.session_state["dashboard_initialized"] = True
+        
+        # Configuración de la página desde configuraciones centralizadas
+        app_config = config_manager.get_config("app")
+        st.set_page_config(
+            page_title=app_config.get("name", "Dashboard Finanzas"),
+            page_icon="💰",
+            layout="wide",
+            initial_sidebar_state="expanded"
+        )
     
     # Aplicar CSS personalizado desde configuraciones
     apply_css_styles()
@@ -189,17 +197,31 @@ def main():
     from utils.helpers import mostrar_navegacion_lateral
     mostrar_navegacion_lateral()
     
-    # Header principal
-    st.markdown("""
-    <div class="main-header">
-        <h1>💰 Dashboard Financiero</h1>
-        <p>Gestiona tus finanzas de manera inteligente</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Header principal con botón de refrescar
+    col_header, col_refresh = st.columns([4, 1])
     
-    # Cargar datos
+    with col_header:
+        st.markdown("""
+        <div class="main-header">
+            <h1>💰 Dashboard Financiero</h1>
+            <p>Gestiona tus finanzas de manera inteligente</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col_refresh:
+        if st.button("🔄 Refrescar Datos", help="Actualizar datos del dashboard"):
+            # Limpiar cache y recargar datos
+            if "dashboard_data" in st.session_state:
+                del st.session_state["dashboard_data"]
+            st.rerun()
+    
+    # Cargar datos con cache para evitar recálculos
     try:
-        resumen = obtener_resumen_cache()
+        # Usar cache de sesión para evitar recálculos constantes
+        if "dashboard_data" not in st.session_state:
+            st.session_state["dashboard_data"] = ReporteService.generar_resumen_financiero()
+        
+        resumen = st.session_state["dashboard_data"]
         configuracion = cargar_configuracion()
         
         # Cargar metas por separado
@@ -292,23 +314,44 @@ def main():
         """, unsafe_allow_html=True)
     
     with col3:
-        gastos_recurrentes = resumen.get('gastos_recurrentes', 0)
+        ahorro_actual = resumen.get('ahorro_actual', 0)
+        meta_mensual = resumen.get('meta_mensual', 0)
         
-        # Mostrar métrica de presupuesto con el mismo estilo
+        # Calcular porcentaje de ahorro vs meta
+        if meta_mensual > 0:
+            porcentaje_ahorro = (ahorro_actual / meta_mensual) * 100
+        else:
+            porcentaje_ahorro = 0
+        
+        # Determinar color e icono según el porcentaje de ahorro
+        if porcentaje_ahorro >= 100:
+            color_ahorro = "green"
+            icono_ahorro = "🎯"
+        elif porcentaje_ahorro >= 80:
+            color_ahorro = "blue"
+            icono_ahorro = "📈"
+        elif porcentaje_ahorro >= 50:
+            color_ahorro = "orange"
+            icono_ahorro = "🟡"
+        else:
+            color_ahorro = "red"
+            icono_ahorro = "🔴"
+        
+        # Mostrar métrica de ahorro con color personalizado
         st.markdown(f"""
         <div style="
-            background: #e2e3e5;
-            border: 2px solid #6c757d;
+            background: {'#d4edda' if porcentaje_ahorro >= 100 else '#d1ecf1' if porcentaje_ahorro >= 80 else '#fff3cd' if porcentaje_ahorro >= 50 else '#f8d7da'};
+            border: 2px solid {'#28a745' if porcentaje_ahorro >= 100 else '#17a2b8' if porcentaje_ahorro >= 80 else '#ffc107' if porcentaje_ahorro >= 50 else '#dc3545'};
             border-radius: 10px;
             padding: 1rem;
             text-align: center;
             margin: 0.5rem 0;
         ">
-            <h3 style="color: #495057; margin: 0;">
-                📊 Presupuesto Mensual
+            <h3 style="color: {'#155724' if porcentaje_ahorro >= 100 else '#0c5460' if porcentaje_ahorro >= 80 else '#856404' if porcentaje_ahorro >= 50 else '#721c24'}; margin: 0;">
+                {icono_ahorro} Ahorro del Mes
             </h3>
-            <h2 style="color: #495057; margin: 0.5rem 0;">
-                {config_manager.get_formatted_currency(gastos_recurrentes)}
+            <h2 style="color: {'#155724' if porcentaje_ahorro >= 100 else '#0c5460' if porcentaje_ahorro >= 80 else '#856404' if porcentaje_ahorro >= 50 else '#721c24'}; margin: 0.5rem 0;">
+                {config_manager.get_formatted_currency(ahorro_actual)}
             </h2>
         </div>
         """, unsafe_allow_html=True)
@@ -321,12 +364,12 @@ def main():
     st.divider()
     
     # TOP 3 gastos del mes
-    st.subheader("🏆 TOP 3 Gastos del Mes")
+    st.subheader("🏆 TOP 5 Gastos del Mes")
     top_gastos = resumen.get("top_gastos", [])
     
     if top_gastos:
-        for i, gasto in enumerate(top_gastos[:3], 1):
-            col1, col2 = st.columns([1, 3])
+        for i, gasto in enumerate(top_gastos[:5], 1):
+            col1, col2 = st.columns([1, 5])
             with col1:
                 st.write(f"**#{i}**")
             with col2:
