@@ -51,29 +51,32 @@ def main():
     
     # Formulario colapsable para agregar nuevo movimiento
     with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
-        # Botones para agregar nuevas opciones (fuera del formulario)
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("➕ Nueva Categoría", help="Agregar nueva categoría", key="add_categoria"):
-                st.session_state["agregando_categoria"] = True
-        with col_btn2:
-            if st.button("➕ Nuevo Tipo de Gasto", help="Agregar nuevo tipo de gasto", key="add_tipo_gasto"):
-                st.session_state["agregando_tipo_gasto"] = True
-        
-        st.divider()
-        
         with st.form("nuevo_movimiento"):
             col1, col2 = st.columns(2)
             
             with col1:
                 concepto = st.text_input("📝 Concepto")
                 fecha = st.date_input("📅 Fecha", value=date.today())
-            
+                monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
+
             with col2:
                 categoria = st.selectbox("📂 Categoría", configuracion["categorias"])
                 tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"])
-                monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
                 tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"])
+            
+            st.divider()
+            
+            # Botones para agregar nuevas opciones (dentro del formulario)
+            st.markdown("**🔧 ¿Necesitas agregar nuevas opciones?**")
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.form_submit_button("➕ Nueva Categoría", help="Agregar nueva categoría", use_container_width=True):
+                    st.session_state["agregando_categoria"] = True
+            with col_btn2:
+                if st.form_submit_button("➕ Nuevo Tipo de Gasto", help="Agregar nuevo tipo de gasto", use_container_width=True):
+                    st.session_state["agregando_tipo_gasto"] = True
+            
+            st.divider()
             
             if st.form_submit_button("💾 Guardar Movimiento", use_container_width=True):
                 if concepto and monto > 0:
