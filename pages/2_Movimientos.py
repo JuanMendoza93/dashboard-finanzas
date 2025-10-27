@@ -62,7 +62,7 @@ def main():
             with col2:
                 categoria = st.selectbox("📂 Categoría", configuracion["categorias"])
                 tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"])
-                tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"])
+                tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso", "Pago"])
             
             st.divider()
             
@@ -190,8 +190,8 @@ def mostrar_movimientos(mes, año, configuracion):
     # Ordenar por fecha descendente
     movimientos_mes.sort(key=lambda x: x.fecha, reverse=True)
     
-    # Calcular totales
-    total_gastos = sum(m.monto for m in movimientos_mes if m.tipo == "Gasto")
+    pagos_recibidos = sum(m.monto for m in movimientos_mes if m.tipo == "Pago")
+    total_gastos = sum(m.monto for m in movimientos_mes if m.tipo == "Gasto") - pagos_recibidos
     total_ingresos = sum(m.monto for m in movimientos_mes if m.tipo == "Ingreso")
     saldo_mes = total_ingresos - total_gastos
     
@@ -218,6 +218,42 @@ def mostrar_movimientos(mes, año, configuracion):
             config_manager.get_formatted_currency(saldo_mes),
             delta=None
         )
+    
+    st.divider()
+    
+    # Filtros para la tabla de movimientos
+    st.markdown("**🔍 Filtrar por tipo:**")
+    col_filtro1, col_filtro2, col_filtro3, col_filtro4 = st.columns(4)
+    
+    with col_filtro1:
+        mostrar_todos = st.button("📋 Todos", use_container_width=True)
+        if mostrar_todos or "filtro_tipo_movimiento" not in st.session_state:
+            st.session_state["filtro_tipo_movimiento"] = "todos"
+    
+    with col_filtro2:
+        mostrar_gastos = st.button("💸 Gastos", use_container_width=True)
+        if mostrar_gastos:
+            st.session_state["filtro_tipo_movimiento"] = "gastos"
+    
+    with col_filtro3:
+        mostrar_ingresos = st.button("💰 Ingresos", use_container_width=True)
+        if mostrar_ingresos:
+            st.session_state["filtro_tipo_movimiento"] = "ingresos"
+    
+    with col_filtro4:
+        mostrar_pagos = st.button("💳 Pagos", use_container_width=True)
+        if mostrar_pagos:
+            st.session_state["filtro_tipo_movimiento"] = "pagos"
+    
+    # Aplicar filtro
+    filtro_tipo = st.session_state.get("filtro_tipo_movimiento", "todos")
+    
+    if filtro_tipo == "gastos":
+        movimientos_mes = [m for m in movimientos_mes if m.tipo == "Gasto"]
+    elif filtro_tipo == "ingresos":
+        movimientos_mes = [m for m in movimientos_mes if m.tipo == "Ingreso"]
+    elif filtro_tipo == "pagos":
+        movimientos_mes = [m for m in movimientos_mes if m.tipo == "Pago"]
     
     st.divider()
     
@@ -344,8 +380,8 @@ def mostrar_movimientos(mes, año, configuracion):
                                              key=f"edit_tipo_gasto_{movimiento_en_edicion.id}")
                 nuevo_monto = st.number_input("💰 Monto", value=float(movimiento_en_edicion.monto), 
                                            min_value=0.0, step=0.01, key=f"edit_monto_{movimiento_en_edicion.id}")
-                nuevo_tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso"], 
-                                    index=0 if movimiento_en_edicion.tipo == "Gasto" else 1, 
+                nuevo_tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso", "Pago"], 
+                                    index=0 if movimiento_en_edicion.tipo == "Gasto" else (1 if movimiento_en_edicion.tipo == "Ingreso" else 2), 
                                     key=f"edit_tipo_{movimiento_en_edicion.id}")
             
             col1, col2 = st.columns(2)

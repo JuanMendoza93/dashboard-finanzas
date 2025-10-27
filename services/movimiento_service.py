@@ -41,7 +41,7 @@ class MovimientoService:
     
     @staticmethod
     def crear(fecha: date, concepto: str, categoria: str, tipo_gasto: str, 
-              monto: float, tipo: str) -> Optional[Movimiento]:
+              monto: float, tipo: str, pagos_recibidos: float = 0.0) -> Optional[Movimiento]:
         """Crear nuevo movimiento"""
         try:
             movimiento_data = {
@@ -50,7 +50,8 @@ class MovimientoService:
                 "categoria": categoria,
                 "tipo_gasto": tipo_gasto,
                 "monto": monto,
-                "tipo": tipo
+                "tipo": tipo,
+                "pagos_recibidos": pagos_recibidos
             }
             
             # Agregar a Firebase Realtime Database
@@ -75,10 +76,12 @@ class MovimientoService:
     
     @staticmethod
     def calcular_gastos_mes(mes: int, año: int) -> float:
-        """Calcular gastos totales de un mes"""
+        """Calcular gastos totales de un mes (restar pagos recibidos de los gastos)"""
         try:
             movimientos = MovimientoService.obtener_por_mes(mes, año)
-            return sum(m.monto for m in movimientos if m.es_gasto)
+            total_gastos = sum(m.monto for m in movimientos if m.tipo == "Gasto")
+            total_pagos = sum(m.monto for m in movimientos if m.tipo == "Pago")
+            return total_gastos - total_pagos
         except Exception as e:
             print(f"Error calculando gastos del mes: {e}")
             return 0.0

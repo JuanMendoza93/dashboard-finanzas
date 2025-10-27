@@ -164,6 +164,32 @@ def get_css_styles() -> str:
         border-radius: 0.375rem;
         border: 1px solid #bee5eb;
     }
+    
+    /* Fix para scroll en móviles - selectores y dropdown */
+    div[data-baseweb="select"] {
+        overflow: visible !important;
+    }
+    div[data-baseweb="popover"] {
+        overflow: auto !important;
+        max-height: 300px !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    div[data-baseweb="menu"] {
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior: contain !important;
+    }
+    
+    /* Fix para radio buttons y otros controles en móviles */
+    @media screen and (max-width: 768px) {
+        div[data-baseweb="select"] {
+            touch-action: pan-y !important;
+        }
+        div[role="listbox"] {
+            -webkit-overflow-scrolling: touch !important;
+            overscroll-behavior: contain !important;
+        }
+    }
     </style>
     """
 

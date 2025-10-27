@@ -17,7 +17,8 @@ class Movimiento:
     categoria: str
     tipo_gasto: str
     monto: float
-    tipo: str  # "Gasto" o "Ingreso"
+    tipo: str  # "Gasto", "Ingreso" o "Pago"
+    pagos_recibidos: float = 0.0  # Deprecated - No se usa más
     fecha_creacion: Optional[datetime] = None
     
     def __post_init__(self):
@@ -49,6 +50,7 @@ class Movimiento:
             "tipo_gasto": self.tipo_gasto,
             "monto": self.monto,
             "tipo": self.tipo,
+            "pagos_recibidos": self.pagos_recibidos,
             "fecha_creacion": self.fecha_creacion.isoformat() if self.fecha_creacion else None
         }
     
@@ -63,5 +65,6 @@ class Movimiento:
             tipo_gasto=data.get("tipo_gasto", ""),
             monto=float(data.get("monto", 0)),
             tipo=data.get("tipo", "Gasto"),
+            pagos_recibidos=float(data.get("pagos_recibidos", 0.0)),
             fecha_creacion=datetime.fromisoformat(data["fecha_creacion"]) if data.get("fecha_creacion") else None
         )
