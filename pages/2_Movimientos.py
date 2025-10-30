@@ -117,18 +117,15 @@ def main():
             col1, col2 = st.columns(2)
             with col1:
                 if st.form_submit_button("💾 Agregar Categoría", use_container_width=True):
-                    if nueva_categoria and nueva_categoria not in configuracion["categorias"]:
-                        # Agregar a la configuración
-                        configuracion["categorias"].append(nueva_categoria)
-                        from utils.database import guardar_configuracion
-                        if guardar_configuracion(configuracion):
-                            st.success(f"✅ Categoría '{nueva_categoria}' agregada correctamente")
+                    if nueva_categoria:
+                        from utils.database import agregar_categoria
+                        success, message = agregar_categoria(nueva_categoria)
+                        if success:
+                            st.success(f"✅ {message}")
                             st.session_state["agregando_categoria"] = False
                             st.rerun()
                         else:
-                            st.error("❌ Error al guardar la categoría")
-                    elif nueva_categoria in configuracion["categorias"]:
-                        st.error("❌ Esta categoría ya existe")
+                            st.error(f"❌ {message}")
                     else:
                         st.error("❌ Por favor ingresa un nombre válido")
             with col2:
@@ -144,18 +141,15 @@ def main():
             col1, col2 = st.columns(2)
             with col1:
                 if st.form_submit_button("💾 Agregar Tipo de Gasto", use_container_width=True):
-                    if nuevo_tipo_gasto and nuevo_tipo_gasto not in configuracion["tipos_gasto"]:
-                        # Agregar a la configuración
-                        configuracion["tipos_gasto"].append(nuevo_tipo_gasto)
-                        from utils.database import guardar_configuracion
-                        if guardar_configuracion(configuracion):
-                            st.success(f"✅ Tipo de gasto '{nuevo_tipo_gasto}' agregado correctamente")
+                    if nuevo_tipo_gasto:
+                        from utils.database import agregar_tipo_gasto
+                        success, message = agregar_tipo_gasto(nuevo_tipo_gasto)
+                        if success:
+                            st.success(f"✅ {message}")
                             st.session_state["agregando_tipo_gasto"] = False
                             st.rerun()
                         else:
-                            st.error("❌ Error al guardar el tipo de gasto")
-                    elif nuevo_tipo_gasto in configuracion["tipos_gasto"]:
-                        st.error("❌ Este tipo de gasto ya existe")
+                            st.error(f"❌ {message}")
                     else:
                         st.error("❌ Por favor ingresa un nombre válido")
             with col2:
@@ -239,8 +233,12 @@ def mostrar_movimientos(mes, año, configuracion):
         )
     
     with col_filtro2:
-        # Filtro por categoría
-        categorias_disponibles = ["Todas"] + sorted(list(set(m.categoria for m in movimientos_originales)))
+        # Filtro por categoría - usar categorías de la base de datos (configuración)
+        # Combinar categorías de la configuración con las categorías usadas en movimientos
+        categorias_config = set(configuracion.get("categorias", []))
+        categorias_movimientos = set(m.categoria for m in movimientos_originales)
+        # Unir ambas listas y eliminar duplicados, luego ordenar
+        categorias_disponibles = ["Todas"] + sorted(list(categorias_config | categorias_movimientos))
         categoria_seleccionada = st.selectbox(
             "📂 Filtrar por categoría:",
             categorias_disponibles,

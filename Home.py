@@ -378,16 +378,14 @@ def mostrar_configuracion():
         nueva_categoria = st.text_input("➕ Nueva Categoría", placeholder="Ej: Ropa, Deportes, etc.")
     with col2:
         if st.button("➕ Agregar", use_container_width=True):
-            if nueva_categoria and nueva_categoria not in configuracion["categorias"]:
-                configuracion["categorias"].append(nueva_categoria)
-                from utils.database import guardar_configuracion
-                if guardar_configuracion(configuracion):
-                    st.success(f"✅ Categoría '{nueva_categoria}' agregada!")
-                    # No usar st.rerun() para evitar ejecución doble
+            if nueva_categoria:
+                from utils.database import agregar_categoria
+                success, message = agregar_categoria(nueva_categoria)
+                if success:
+                    st.success(f"✅ {message}")
+                    st.rerun()
                 else:
-                    st.error("❌ Error al guardar la categoría")
-            elif nueva_categoria in configuracion["categorias"]:
-                st.error("❌ Esta categoría ya existe")
+                    st.error(f"❌ {message}")
             else:
                 st.error("❌ Por favor ingresa un nombre")
     
@@ -401,11 +399,16 @@ def mostrar_configuracion():
                 st.write(f"🏷️ {categoria}")
             with col2:
                 if st.button("🗑️", key=f"del_cat_{categoria}"):
-                    configuracion["categorias"].remove(categoria)
-                    from utils.database import guardar_configuracion
-                    guardar_configuracion(configuracion)
-                    st.success(f"✅ Categoría '{categoria}' eliminada!")
-                    st.rerun()
+                    # Recargar configuración antes de eliminar
+                    configuracion = cargar_configuracion()
+                    if categoria in configuracion.get("categorias", []):
+                        configuracion["categorias"].remove(categoria)
+                        from utils.database import guardar_configuracion
+                        if guardar_configuracion(configuracion):
+                            st.success(f"✅ Categoría '{categoria}' eliminada!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al eliminar la categoría")
     
     st.divider()
     
@@ -417,16 +420,14 @@ def mostrar_configuracion():
         nuevo_tipo = st.text_input("➕ Nuevo Tipo de Gasto", placeholder="Ej: Inversión, Ahorro, etc.")
     with col2:
         if st.button("➕ Agregar Tipo", use_container_width=True):
-            if nuevo_tipo and nuevo_tipo not in configuracion["tipos_gasto"]:
-                configuracion["tipos_gasto"].append(nuevo_tipo)
-                from utils.database import guardar_configuracion
-                if guardar_configuracion(configuracion):
-                    st.success(f"✅ Tipo '{nuevo_tipo}' agregado!")
-                    # No usar st.rerun() para evitar ejecución doble
+            if nuevo_tipo:
+                from utils.database import agregar_tipo_gasto
+                success, message = agregar_tipo_gasto(nuevo_tipo)
+                if success:
+                    st.success(f"✅ {message}")
+                    st.rerun()
                 else:
-                    st.error("❌ Error al guardar el tipo")
-            elif nuevo_tipo in configuracion["tipos_gasto"]:
-                st.error("❌ Este tipo ya existe")
+                    st.error(f"❌ {message}")
             else:
                 st.error("❌ Por favor ingresa un nombre")
     
@@ -440,11 +441,16 @@ def mostrar_configuracion():
                 st.write(f"🔍 {tipo}")
             with col2:
                 if st.button("🗑️", key=f"del_tipo_{tipo}"):
-                    configuracion["tipos_gasto"].remove(tipo)
-                    from utils.database import guardar_configuracion
-                    guardar_configuracion(configuracion)
-                    st.success(f"✅ Tipo '{tipo}' eliminado!")
-                    st.rerun()
+                    # Recargar configuración antes de eliminar
+                    configuracion = cargar_configuracion()
+                    if tipo in configuracion.get("tipos_gasto", []):
+                        configuracion["tipos_gasto"].remove(tipo)
+                        from utils.database import guardar_configuracion
+                        if guardar_configuracion(configuracion):
+                            st.success(f"✅ Tipo '{tipo}' eliminado!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al eliminar el tipo")
     
     st.divider()
     st.info("💡 **Tip:** Los cambios en categorías y tipos se aplicarán inmediatamente en todos los formularios.")

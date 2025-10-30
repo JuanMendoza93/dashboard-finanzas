@@ -182,11 +182,96 @@ def cargar_configuracion():
         }
 
 def guardar_configuracion(configuracion):
+    """Guardar configuración completa en Firebase"""
     try:
+        # Asegurar que siempre tenga las estructuras necesarias
+        if "categorias" not in configuracion:
+            configuracion["categorias"] = []
+        if "tipos_gasto" not in configuracion:
+            configuracion["tipos_gasto"] = []
+        
+        # Normalizar listas (eliminar duplicados preservando orden)
+        categorias_normalizadas = []
+        for cat in configuracion["categorias"]:
+            cat_normalizada = str(cat).strip()
+            if cat_normalizada and cat_normalizada.lower() not in [c.lower() for c in categorias_normalizadas]:
+                categorias_normalizadas.append(cat_normalizada)
+        
+        tipos_normalizados = []
+        for tipo in configuracion["tipos_gasto"]:
+            tipo_normalizado = str(tipo).strip()
+            if tipo_normalizado and tipo_normalizado.lower() not in [t.lower() for t in tipos_normalizados]:
+                tipos_normalizados.append(tipo_normalizado)
+        
+        configuracion["categorias"] = categorias_normalizadas
+        configuracion["tipos_gasto"] = tipos_normalizados
+        
         return firebase_set("configuracion", configuracion)
     except Exception as e:
         print(f"Error guardando configuración: {e}")
         return False
+
+def agregar_categoria(nueva_categoria):
+    """Agregar una nueva categoría validando duplicados"""
+    try:
+        # Recargar configuración desde la base de datos para tener los datos más actuales
+        configuracion = cargar_configuracion()
+        
+        # Normalizar la nueva categoría
+        nueva_categoria = str(nueva_categoria).strip()
+        
+        if not nueva_categoria:
+            return False, "El nombre de la categoría no puede estar vacío"
+        
+        # Validar duplicados (case-insensitive)
+        categorias_lower = [c.lower() for c in configuracion.get("categorias", [])]
+        if nueva_categoria.lower() in categorias_lower:
+            return False, f"La categoría '{nueva_categoria}' ya existe"
+        
+        # Agregar la nueva categoría
+        if "categorias" not in configuracion:
+            configuracion["categorias"] = []
+        configuracion["categorias"].append(nueva_categoria)
+        
+        # Guardar en la base de datos
+        if guardar_configuracion(configuracion):
+            return True, f"Categoría '{nueva_categoria}' agregada correctamente"
+        else:
+            return False, "Error al guardar la categoría en la base de datos"
+    except Exception as e:
+        print(f"Error agregando categoría: {e}")
+        return False, f"Error: {str(e)}"
+
+def agregar_tipo_gasto(nuevo_tipo):
+    """Agregar un nuevo tipo de gasto validando duplicados"""
+    try:
+        # Recargar configuración desde la base de datos para tener los datos más actuales
+        configuracion = cargar_configuracion()
+        
+        # Normalizar el nuevo tipo
+        nuevo_tipo = str(nuevo_tipo).strip()
+        
+        if not nuevo_tipo:
+            return False, "El nombre del tipo de gasto no puede estar vacío"
+        
+        # Validar duplicados (case-insensitive)
+        tipos_lower = [t.lower() for t in configuracion.get("tipos_gasto", [])]
+        if nuevo_tipo.lower() in tipos_lower:
+            return False, f"El tipo de gasto '{nuevo_tipo}' ya existe"
+        
+        # Agregar el nuevo tipo
+        if "tipos_gasto" not in configuracion:
+            configuracion["tipos_gasto"] = []
+        configuracion["tipos_gasto"].append(nuevo_tipo)
+        
+        # Guardar en la base de datos
+        if guardar_configuracion(configuracion):
+            return True, f"Tipo de gasto '{nuevo_tipo}' agregado correctamente"
+        else:
+            return False, "Error al guardar el tipo de gasto en la base de datos"
+    except Exception as e:
+        print(f"Error agregando tipo de gasto: {e}")
+        return False, f"Error: {str(e)}"
 
 def cargar_gastos_recurrentes():
     try:

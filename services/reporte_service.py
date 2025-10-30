@@ -85,15 +85,18 @@ class ReporteService:
         """Generar reporte mensual detallado"""
         try:
             movimientos = MovimientoService.obtener_por_mes(mes, año)
-            gastos = [m for m in movimientos if m.es_gasto]
-            ingresos = [m for m in movimientos if m.es_ingreso]
+            gastos = [m for m in movimientos if m.tipo == "Gasto"]
+            ingresos = [m for m in movimientos if m.tipo == "Ingreso"]
+            pagos = [m for m in movimientos if m.tipo == "Pago"]
             
-            # Calcular totales
-            total_gastos = sum(m.monto_absoluto for m in gastos)
+            # Calcular totales según la lógica correcta:
+            # Gastos: sumar todos los gastos y restar los pagos recibidos
+            total_gastos = sum(m.monto_absoluto for m in gastos) - sum(m.monto for m in pagos)
+            # Ingresos: solo los movimientos tipo "Ingreso"
             total_ingresos = sum(m.monto for m in ingresos)
             balance = total_ingresos - total_gastos
             
-            # Gastos por categoría
+            # Gastos por categoría (solo gastos, sin incluir pagos)
             gastos_por_categoria = {}
             for gasto in gastos:
                 categoria = gasto.categoria
@@ -228,9 +231,16 @@ class ReporteService:
                 saldo_final_calculado = None
                 if saldo_anterior is not None:
                     movimientos_mes = MovimientoService.obtener_por_mes(mes, año)
-                    pagos_recibidos = sum(m.monto for m in movimientos_mes if m.tipo == "Pago")
-                    gastos_mes = sum(abs(m.monto) for m in movimientos_mes if m.es_gasto) - pagos_recibidos
-                    ingresos_mes = sum(m.monto for m in movimientos_mes if not m.es_gasto)
+                    
+                    # Gastos: sumar todos los gastos y restar los pagos recibidos
+                    gastos_mov = [m for m in movimientos_mes if m.tipo == "Gasto"]
+                    pagos_recibidos = [m for m in movimientos_mes if m.tipo == "Pago"]
+                    gastos_mes = sum(m.monto_absoluto for m in gastos_mov) - sum(m.monto for m in pagos_recibidos)
+                    
+                    # Ingresos: solo movimientos tipo "Ingreso"
+                    ingresos_mov = [m for m in movimientos_mes if m.tipo == "Ingreso"]
+                    ingresos_mes = sum(m.monto for m in ingresos_mov)
+                    
                     ahorro_mes = ingresos_mes - gastos_mes
                     saldo_final_calculado = saldo_anterior + ahorro_mes
                 
@@ -292,8 +302,16 @@ class ReporteService:
                 elif saldo_inicial is None:
                     # Fallback: calcular aproximado a partir del saldo actual restando el ahorro calculado
                     movimientos_mes = MovimientoService.obtener_por_mes(mes, año)
-                    gastos_mes = sum(abs(m.monto) for m in movimientos_mes if m.es_gasto)
-                    ingresos_mes = sum(m.monto for m in movimientos_mes if not m.es_gasto)
+                    
+                    # Gastos: sumar todos los gastos y restar los pagos recibidos
+                    gastos_mov = [m for m in movimientos_mes if m.tipo == "Gasto"]
+                    pagos_recibidos = [m for m in movimientos_mes if m.tipo == "Pago"]
+                    gastos_mes = sum(m.monto_absoluto for m in gastos_mov) - sum(m.monto for m in pagos_recibidos)
+                    
+                    # Ingresos: solo movimientos tipo "Ingreso"
+                    ingresos_mov = [m for m in movimientos_mes if m.tipo == "Ingreso"]
+                    ingresos_mes = sum(m.monto for m in ingresos_mov)
+                    
                     ahorro_calculado = ingresos_mes - gastos_mes
                     saldo_inicial = saldo_final - ahorro_calculado if saldo_final else 0
             
@@ -352,9 +370,16 @@ class ReporteService:
         try:
             # Obtener movimientos del mes
             movimientos = MovimientoService.obtener_por_mes(mes, año)
-            pagos_recibidos = sum(m.monto for m in movimientos if m.tipo == "Pago")
-            gastos = sum(abs(m.monto) for m in movimientos if m.es_gasto) - pagos_recibidos
-            ingresos = sum(m.monto for m in movimientos if not m.es_gasto)
+            
+            # Calcular gastos: sumar todos los gastos y restar los pagos recibidos
+            gastos_movimientos = [m for m in movimientos if m.tipo == "Gasto"]
+            pagos_recibidos = [m for m in movimientos if m.tipo == "Pago"]
+            gastos = sum(m.monto_absoluto for m in gastos_movimientos) - sum(m.monto for m in pagos_recibidos)
+            
+            # Calcular ingresos: solo movimientos tipo "Ingreso"
+            ingresos_movimientos = [m for m in movimientos if m.tipo == "Ingreso"]
+            ingresos = sum(m.monto for m in ingresos_movimientos)
+            
             ahorro = ingresos - gastos
             
             # Obtener saldo total de cuentas

@@ -107,9 +107,15 @@ def mostrar_analisis_detallado():
             # Obtener movimientos del mes
             movimientos_mes = MovimientoService.obtener_por_mes(mes, año)
             
-            pagos_recibidos = sum(m.monto for m in movimientos_mes if m.tipo == "Pago")
-            gastos_mes = sum(abs(m.monto) for m in movimientos_mes if m.es_gasto) - pagos_recibidos
-            ingresos_mes = sum(m.monto for m in movimientos_mes if not m.es_gasto)
+            # Gastos: sumar todos los gastos y restar los pagos recibidos
+            gastos_mov = [m for m in movimientos_mes if m.tipo == "Gasto"]
+            pagos_recibidos = [m for m in movimientos_mes if m.tipo == "Pago"]
+            gastos_mes = sum(m.monto_absoluto for m in gastos_mov) - sum(m.monto for m in pagos_recibidos)
+            
+            # Ingresos: solo movimientos tipo "Ingreso"
+            ingresos_mov = [m for m in movimientos_mes if m.tipo == "Ingreso"]
+            ingresos_mes = sum(m.monto for m in ingresos_mov)
+            
             ahorro_mes = ingresos_mes - gastos_mes
             
             # Calcular ahorro real
@@ -265,9 +271,15 @@ def mostrar_analisis_anual():
         
         for mes in range(1, 13):
             movimientos_mes = MovimientoService.obtener_por_mes(mes, año_analisis)
-            pagos_recibidos = sum(m.monto for m in movimientos_mes if m.tipo == "Pago")
-            gastos_mes = sum(abs(m.monto) for m in movimientos_mes if m.es_gasto) - pagos_recibidos
-            ingresos_mes = sum(m.monto for m in movimientos_mes if not m.es_gasto)
+            
+            # Gastos: sumar todos los gastos y restar los pagos recibidos
+            gastos_mov = [m for m in movimientos_mes if m.tipo == "Gasto"]
+            pagos_recibidos = [m for m in movimientos_mes if m.tipo == "Pago"]
+            gastos_mes = sum(m.monto_absoluto for m in gastos_mov) - sum(m.monto for m in pagos_recibidos)
+            
+            # Ingresos: solo movimientos tipo "Ingreso"
+            ingresos_mov = [m for m in movimientos_mes if m.tipo == "Ingreso"]
+            ingresos_mes = sum(m.monto for m in ingresos_mov)
             
             gastos_año += gastos_mes
             ingresos_año += ingresos_mes
