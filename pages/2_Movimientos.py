@@ -221,39 +221,43 @@ def mostrar_movimientos(mes, año, configuracion):
     
     st.divider()
     
+    # Guardar movimientos originales antes de filtrar
+    movimientos_originales = movimientos_mes.copy()
+    
     # Filtros para la tabla de movimientos
-    st.markdown("**🔍 Filtrar por tipo:**")
-    col_filtro1, col_filtro2, col_filtro3, col_filtro4 = st.columns(4)
+    st.markdown("**🔍 Filtros:**")
+    col_filtro1, col_filtro2 = st.columns(2)
     
     with col_filtro1:
-        mostrar_todos = st.button("📋 Todos", use_container_width=True)
-        if mostrar_todos or "filtro_tipo_movimiento" not in st.session_state:
-            st.session_state["filtro_tipo_movimiento"] = "todos"
+        # Filtro por tipo
+        opciones_tipo = ["Todos", "Gastos", "Ingresos", "Pagos"]
+        tipo_seleccionado = st.selectbox(
+            "📊 Filtrar por tipo:",
+            opciones_tipo,
+            index=0,
+            key="filtro_tipo_movimiento"
+        )
     
     with col_filtro2:
-        mostrar_gastos = st.button("💸 Gastos", use_container_width=True)
-        if mostrar_gastos:
-            st.session_state["filtro_tipo_movimiento"] = "gastos"
+        # Filtro por categoría
+        categorias_disponibles = ["Todas"] + sorted(list(set(m.categoria for m in movimientos_originales)))
+        categoria_seleccionada = st.selectbox(
+            "📂 Filtrar por categoría:",
+            categorias_disponibles,
+            index=0,
+            key="filtro_categoria_movimiento"
+        )
     
-    with col_filtro3:
-        mostrar_ingresos = st.button("💰 Ingresos", use_container_width=True)
-        if mostrar_ingresos:
-            st.session_state["filtro_tipo_movimiento"] = "ingresos"
-    
-    with col_filtro4:
-        mostrar_pagos = st.button("💳 Pagos", use_container_width=True)
-        if mostrar_pagos:
-            st.session_state["filtro_tipo_movimiento"] = "pagos"
-    
-    # Aplicar filtro
-    filtro_tipo = st.session_state.get("filtro_tipo_movimiento", "todos")
-    
-    if filtro_tipo == "gastos":
+    # Aplicar filtros
+    if tipo_seleccionado == "Gastos":
         movimientos_mes = [m for m in movimientos_mes if m.tipo == "Gasto"]
-    elif filtro_tipo == "ingresos":
+    elif tipo_seleccionado == "Ingresos":
         movimientos_mes = [m for m in movimientos_mes if m.tipo == "Ingreso"]
-    elif filtro_tipo == "pagos":
+    elif tipo_seleccionado == "Pagos":
         movimientos_mes = [m for m in movimientos_mes if m.tipo == "Pago"]
+    
+    if categoria_seleccionada != "Todas":
+        movimientos_mes = [m for m in movimientos_mes if m.categoria == categoria_seleccionada]
     
     st.divider()
     
@@ -310,48 +314,49 @@ def mostrar_movimientos(mes, año, configuracion):
     </style>
     """, unsafe_allow_html=True)
     
-    # Crear tabla personalizada con botones (más ancha)
-    for i, movimiento in enumerate(movimientos_mes):
-        with st.container():
-            st.markdown('<div class="movements-table">', unsafe_allow_html=True)
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 4, 2, 2, 2, 2, 2])
-            
-            with col1:
-                st.write(f"**{movimiento.fecha.strftime('%d/%m/%Y')}**")
-            
-            with col2:
-                st.write(f"**{movimiento.concepto}**")
-            
-            with col3:
-                st.write(f"{movimiento.categoria}")
-            
-            with col4:
-                st.write(f"{movimiento.tipo}")
-            
-            with col5:
-                st.write(f"**${movimiento.monto:,.2f}**")
-            
-            with col6:
-                st.write(f"{movimiento.tipo_gasto}")
-            
-            with col7:
-                col_edit, col_del = st.columns(2)
-                with col_edit:
-                    if st.button("✏️", key=f"edit_{movimiento.id}", help="Editar"):
-                        st.session_state[f"editando_movimiento_{movimiento.id}"] = True
-                with col_del:
-                    if st.button("🗑️", key=f"del_{movimiento.id}", help="Eliminar"):
-                        if MovimientoService.eliminar(movimiento.id):
-                            st.success(f"✅ Movimiento eliminado!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al eliminar el movimiento")
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Separador entre filas
-            if i < len(movimientos_mes) - 1:
-                st.markdown("<hr style='margin: 2px 0; border: none; border-top: 1px solid #ccc;'>", unsafe_allow_html=True)
+    # Crear tabla personalizada con botones (más ancha) - dentro de un expander
+    with st.expander(f"📋 Ver Movimientos ({len(movimientos_mes)} registros)", expanded=False):
+        for i, movimiento in enumerate(movimientos_mes):
+            with st.container():
+                st.markdown('<div class="movements-table">', unsafe_allow_html=True)
+                col1, col2, col3, col4, col5, col6, col7 = st.columns([2, 4, 2, 2, 2, 2, 2])
+                
+                with col1:
+                    st.write(f"**{movimiento.fecha.strftime('%d/%m/%Y')}**")
+                
+                with col2:
+                    st.write(f"**{movimiento.concepto}**")
+                
+                with col3:
+                    st.write(f"{movimiento.categoria}")
+                
+                with col4:
+                    st.write(f"{movimiento.tipo}")
+                
+                with col5:
+                    st.write(f"**${movimiento.monto:,.2f}**")
+                
+                with col6:
+                    st.write(f"{movimiento.tipo_gasto}")
+                
+                with col7:
+                    col_edit, col_del = st.columns(2)
+                    with col_edit:
+                        if st.button("✏️", key=f"edit_{movimiento.id}", help="Editar"):
+                            st.session_state[f"editando_movimiento_{movimiento.id}"] = True
+                    with col_del:
+                        if st.button("🗑️", key=f"del_{movimiento.id}", help="Eliminar"):
+                            if MovimientoService.eliminar(movimiento.id):
+                                st.success(f"✅ Movimiento eliminado!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Error al eliminar el movimiento")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Separador entre filas
+                if i < len(movimientos_mes) - 1:
+                    st.markdown("<hr style='margin: 2px 0; border: none; border-top: 1px solid #ccc;'>", unsafe_allow_html=True)
     
     # Formulario de edición (se muestra si hay algún movimiento en edición)
     movimiento_en_edicion = None

@@ -11,10 +11,6 @@ def mostrar_navegacion_lateral():
     """Mostrar navegación lateral personalizada"""
     st.sidebar.markdown("### 🧭 Navegación")
     
-    # Obtener la página actual para resaltar el botón correspondiente
-    pagina_actual = st.query_params.get("page", "app.py")
-    
-    
     # Botones de navegación principales
     if st.sidebar.button("🏠 Dashboard", use_container_width=True, type="primary"):
         navegar_a_pagina("app.py")
@@ -39,27 +35,18 @@ def mostrar_navegacion_lateral():
 
 
 def navegar_a_pagina(pagina: str):
-    """Navegar a una página específica usando st.switch_page (disponible en 1.50.0+)"""
+    """Navegar a una página específica"""
     try:
-        # Usar st.switch_page que ahora está disponible en la versión 1.50.0
         st.switch_page(pagina)
-    except Exception as e:
-        # Si falla, mostrar error y sugerir navegación manual
-        st.error(f"Error de navegación: {str(e)}")
-        st.info(f"Por favor, navega manualmente a: {pagina}")
-        st.markdown(f"""
-        <div style="text-align: center; margin: 2rem 0;">
-            <a href="{pagina}" target="_self" style="
-                display: inline-block;
-                padding: 0.5rem 1rem;
-                background-color: #ff4b4b;
-                color: white;
-                text-decoration: none;
-                border-radius: 0.5rem;
-                font-weight: bold;
-            ">Ir a {pagina}</a>
-        </div>
-        """, unsafe_allow_html=True)
+    except AttributeError:
+        # Si st.switch_page no está disponible, usar redirección directa
+        if pagina == "app.py":
+            url = "/"
+        else:
+            nombre_pagina = pagina.replace("pages/", "").replace(".py", "")
+            url = f"/{nombre_pagina}"
+        
+        st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_allow_html=True)
 
 
 def get_css_styles() -> str:
@@ -235,128 +222,8 @@ def show_info_message(message: str):
     """, unsafe_allow_html=True)
 
 
-def handle_database_error(error: Exception, operation: str) -> None:
-    """Manejar errores de base de datos de forma consistente"""
-    error_message = f"Error en {operation}: {str(error)}"
-    show_error_message(error_message)
-    print(f"Database Error - {operation}: {error}")
-
-
-def format_currency(amount: float) -> str:
-    """Formatear cantidad como moneda"""
-    return f"${amount:,.2f}"
-
-
-def format_percentage(value: float) -> str:
-    """Formatear valor como porcentaje"""
-    return f"{value:.1f}%"
-
-
-def get_current_month_year() -> tuple:
-    """Obtener mes y año actual"""
-    now = datetime.now()
-    return now.month, now.year
-
-
-def validate_required_fields(fields: Dict[str, Any]) -> List[str]:
-    """Validar campos requeridos"""
-    missing_fields = []
-    for field_name, field_value in fields.items():
-        if not field_value or (isinstance(field_value, str) and not field_value.strip()):
-            missing_fields.append(field_name)
-    return missing_fields
-
-
-def validate_numeric_field(value: Any, field_name: str, min_value: float = 0) -> bool:
-    """Validar campo numérico"""
-    try:
-        numeric_value = float(value)
-        if numeric_value < min_value:
-            show_error_message(f"{field_name} debe ser mayor o igual a {min_value}")
-            return False
-        return True
-    except (ValueError, TypeError):
-        show_error_message(f"{field_name} debe ser un número válido")
-        return False
-
-
-def validate_date_field(date_value: date, field_name: str) -> bool:
-    """Validar campo de fecha"""
-    if not date_value:
-        show_error_message(f"{field_name} es requerido")
-        return False
-    
-    if date_value > date.today():
-        show_error_message(f"{field_name} no puede ser una fecha futura")
-        return False
-    
-    return True
-
-
-def create_metric_card(title: str, value: str, delta: Optional[str] = None) -> None:
-    """Crear tarjeta de métrica consistente"""
-    st.markdown(f"""
-    <div class="metric-card">
-        <h4>{title}</h4>
-        <h2>{value}</h2>
-        {f'<p>{delta}</p>' if delta else ''}
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def create_navigation_button(text: str, icon: str, key: str) -> bool:
-    """Crear botón de navegación consistente"""
-    return st.sidebar.button(f"{icon} {text}", key=key, use_container_width=True)
-
-
-def create_form_button(text: str, icon: str, button_type: str = "primary") -> bool:
-    """Crear botón de formulario consistente"""
-    if button_type == "primary":
-        return st.form_submit_button(f"{icon} {text}", use_container_width=True)
-    elif button_type == "secondary":
-        return st.form_submit_button(f"{icon} {text}", use_container_width=True, type="secondary")
-    else:
-        return st.form_submit_button(f"{icon} {text}", use_container_width=True)
-
-
-def create_action_buttons(actions: List[Dict[str, str]]) -> Dict[str, bool]:
-    """Crear botones de acción consistentes"""
-    results = {}
-    cols = st.columns(len(actions))
-    
-    for i, action in enumerate(actions):
-        with cols[i]:
-            results[action["key"]] = st.button(
-                action["icon"], 
-                key=action["key"], 
-                help=action.get("tooltip", "")
-            )
-    
-    return results
-
-
-def create_data_table(data: List[Dict], columns: List[str]) -> None:
-    """Crear tabla de datos consistente"""
-    if not data:
-        show_info_message("No hay datos para mostrar")
-        return
-    
-    # Crear DataFrame
-    import pandas as pd
-    df = pd.DataFrame(data)
-    
-    # Mostrar tabla
-    st.dataframe(df, use_container_width=True)
-
-
-def create_loading_spinner(message: str = "Cargando..."):
-    """Crear spinner de carga"""
-    return st.spinner(message)
-
-
 def show_fullscreen_loading(message: str = "Cargando..."):
     """Mostrar loading de pantalla completa que bloquea interacciones"""
-    # Usar st.spinner que es más confiable
     with st.spinner(message):
         st.markdown(f"""
         <div style="
@@ -405,30 +272,4 @@ def show_fullscreen_loading(message: str = "Cargando..."):
 
 def hide_fullscreen_loading():
     """Ocultar loading de pantalla completa"""
-    # No necesitamos hacer nada, st.spinner se oculta automáticamente
     pass
-
-
-def create_expander(title: str, expanded: bool = False):
-    """Crear expander consistente"""
-    return st.expander(title, expanded=expanded)
-
-
-def create_columns(num_columns: int) -> List:
-    """Crear columnas consistentes"""
-    return st.columns(num_columns)
-
-
-def create_tabs(tab_names: List[str]) -> List:
-    """Crear tabs consistentes"""
-    return st.tabs(tab_names)
-
-
-def create_divider():
-    """Crear divisor consistente"""
-    st.divider()
-
-
-def create_space():
-    """Crear espacio consistente"""
-    st.markdown("<br>", unsafe_allow_html=True)

@@ -88,17 +88,12 @@
   "firebase_sync": {
     "categorias": [
       "Comida",
+      "Transporte",
       "Vivienda",
+      "Entretenimiento",
       "Salud",
       "Educación",
-      "Niños",
-      "Ropa",
-      "Entretenimiento",
-      "Despensa",
-      "Servicios",
-      "Transporte/Gasolina",
-      "Ocio",
-      "Ingreso"
+      "Otros"
     ],
     "tipos_gasto": [
       "Necesario",
