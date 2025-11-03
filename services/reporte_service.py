@@ -36,8 +36,17 @@ class ReporteService:
             # Ahorro actual = Ingresos - Gastos (del mes actual)
             ahorro_actual = ingresos_mes - gastos_mes
             
-            # Top gastos
-            top_gastos = MovimientoService.obtener_top_gastos(5)
+            # Calcular ahorro acumulado del año actual (desde enero hasta el mes actual)
+            ahorro_acumulado_anual = 0
+            año_actual = ahora.year
+            for mes in range(1, ahora.month + 1):
+                gastos_mes_temp = MovimientoService.calcular_gastos_mes(mes, año_actual)
+                ingresos_mes_temp = MovimientoService.calcular_ingresos_mes(mes, año_actual)
+                ahorro_mes_temp = ingresos_mes_temp - gastos_mes_temp
+                ahorro_acumulado_anual += ahorro_mes_temp
+            
+            # Top gastos del mes actual
+            top_gastos = MovimientoService.obtener_top_gastos(5, ahora.month, ahora.year)
             
             # Gastos por categoría
             gastos_por_categoria = MovimientoService.obtener_gastos_por_categoria(ahora.month, ahora.year)
@@ -53,6 +62,7 @@ class ReporteService:
                 "gastos_mes": gastos_mes,
                 "ingresos_mes": ingresos_mes,
                 "ahorro_actual": ahorro_actual,
+                "ahorro_acumulado_anual": ahorro_acumulado_anual,
                 "top_gastos": top_gastos,
                 "gastos_por_categoria": gastos_por_categoria,
                 "gastos_por_tipo": gastos_por_tipo,

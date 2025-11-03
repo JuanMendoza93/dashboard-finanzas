@@ -72,10 +72,12 @@ def mostrar_graficas_principales(resumen):
     with col2:
         # Gráfico de ahorro anual (velocímetro)
         ahorro_actual = resumen.get("ahorro_actual", 0)
+        ahorro_acumulado_anual = resumen.get("ahorro_acumulado_anual", 0)  # Ahorro acumulado del año
         meta_anual = resumen.get("meta_anual", 0)
         
         if meta_anual > 0:
-            progreso_anual = min((ahorro_actual / meta_anual) * 100, 200)
+            # Usar ahorro acumulado del año para el progreso anual
+            progreso_anual = min((ahorro_acumulado_anual / meta_anual) * 100, 200)
             
             fig = go.Figure(go.Indicator(
                 mode = "gauge+number+delta",

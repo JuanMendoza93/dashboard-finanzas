@@ -78,15 +78,16 @@ def mostrar_graficas_principales(resumen):
         # Obtener metas
         meta_mensual = financial_config.get_meta_mensual()
         meta_anual = financial_config.get_meta_anual()
-        ahorro_actual = resumen.get("ahorro_actual", 0)
+        ahorro_actual = resumen.get("ahorro_actual", 0)  # Ahorro del mes actual
+        ahorro_acumulado_anual = resumen.get("ahorro_acumulado_anual", 0)  # Ahorro acumulado del año
         
         # Mostrar métricas de ahorro
         col_a, col_b = st.columns(2)
         
         with col_a:
             st.metric(
-                "💰 Ahorro Actual",
-                f"${ahorro_actual:,.2f}",
+                "💰 Ahorro Anual Acumulado",
+                f"${ahorro_acumulado_anual:,.2f}",
                 delta=f"Meta: ${meta_anual:,.2f}" if meta_anual > 0 else None
             )
         
@@ -100,8 +101,9 @@ def mostrar_graficas_principales(resumen):
                 )
         
         # Gráfico de progreso de ahorro anual (velocímetro)
+        # Usar ahorro acumulado del año, no solo del mes actual
         if meta_anual > 0:
-            progreso_anual = min(ahorro_actual / meta_anual, 2.0) * 100  # Permitir hasta 200%
+            progreso_anual = min(ahorro_acumulado_anual / meta_anual, 2.0) * 100  # Permitir hasta 200%
             
             fig = go.Figure(go.Indicator(
                 mode="gauge+number+delta",

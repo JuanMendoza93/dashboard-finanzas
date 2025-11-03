@@ -50,16 +50,32 @@ def mostrar_analisis_detallado():
     # Verificar y generar reporte mensual si es necesario (último día del mes)
     ReporteService.verificar_y_generar_reporte_mensual()
     
-    # Botón para regenerar reporte del mes actual
+    # Botones para generar reportes
     ahora = datetime.now()
-    col1, col2 = st.columns([3, 1])
+    
+    # Calcular mes anterior
+    mes_anterior = ahora.month - 1
+    año_anterior = ahora.year
+    if mes_anterior == 0:
+        mes_anterior = 12
+        año_anterior = ahora.year - 1
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col2:
-        if st.button("🔄 Regenerar Reporte del Mes Actual", use_container_width=True, help="Actualiza el reporte del mes actual con los datos más recientes (útil si actualizaste saldos o movimientos)"):
+        if st.button("🔄 Mes Actual", use_container_width=True, help="Regenera el reporte del mes actual con los datos más recientes"):
             if ReporteService.generar_reporte_mensual(ahora.month, ahora.year):
                 st.success(f"✅ Reporte de {ahora.strftime('%B %Y')} regenerado correctamente")
                 st.rerun()
             else:
                 st.error("❌ Error al regenerar el reporte")
+    with col3:
+        nombre_mes_anterior = datetime(año_anterior, mes_anterior, 1).strftime('%B %Y')
+        if st.button("📅 Mes Anterior", use_container_width=True, help=f"Genera o regenera el reporte de {nombre_mes_anterior}"):
+            if ReporteService.generar_reporte_mensual(mes_anterior, año_anterior):
+                st.success(f"✅ Reporte de {nombre_mes_anterior} generado correctamente")
+                st.rerun()
+            else:
+                st.error("❌ Error al generar el reporte")
     
     # Obtener datos desde Octubre 2025 hasta el mes actual
     ahora = datetime.now()

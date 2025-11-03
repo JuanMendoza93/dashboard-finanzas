@@ -97,10 +97,24 @@ class MovimientoService:
             return 0.0
     
     @staticmethod
-    def obtener_top_gastos(limite: int = 3) -> List[dict]:
-        """Obtener las categorías con más gastos (agrupado por categoría)"""
+    def obtener_top_gastos(limite: int = 3, mes: Optional[int] = None, año: Optional[int] = None) -> List[dict]:
+        """Obtener las categorías con más gastos (agrupado por categoría)
+        
+        Args:
+            limite: Número de categorías a retornar
+            mes: Mes a filtrar (opcional). Si se proporciona, se filtra por mes
+            año: Año a filtrar (opcional). Si se proporciona, se filtra por año
+        
+        Returns:
+            Lista de diccionarios con categoría y total
+        """
         try:
-            movimientos = MovimientoService.obtener_todos()
+            # Si se especifica mes y año, obtener solo movimientos de ese mes
+            if mes is not None and año is not None:
+                movimientos = MovimientoService.obtener_por_mes(mes, año)
+            else:
+                movimientos = MovimientoService.obtener_todos()
+            
             gastos = [m for m in movimientos if m.es_gasto]
             
             # Agrupar por categoría y sumar montos
