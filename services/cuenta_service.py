@@ -3,6 +3,7 @@ Servicio para gestión de cuentas bancarias
 """
 
 from typing import List, Optional
+import streamlit as st
 from models.cuenta import Cuenta
 from utils.database import db, firebase_get, firebase_set, firebase_delete, firebase_push
 from utils.config_manager import config_manager
@@ -12,27 +13,28 @@ class CuentaService:
     """Servicio para operaciones con cuentas"""
     
     @staticmethod
-    def obtener_todas() -> List[Cuenta]:
-        """Obtener todas las cuentas"""
+    @st.cache_data(ttl=300, max_entries=10, show_spinner=False)
+    def _obtener_todas_cached() -> List[Cuenta]:
+        """Obtener todas las cuentas (función interna cacheada)"""
         try:
             cuentas_data = firebase_get("cuentas")
-            print(f"DEBUG: cuentas_data = {cuentas_data}")
             if not cuentas_data:
-                print("DEBUG: No hay datos de cuentas")
                 return []
             
             cuentas = []
             for cuenta_id, cuenta_data in cuentas_data.items():
-                print(f"DEBUG: Procesando cuenta {cuenta_id}: {cuenta_data}")
                 cuenta_data["id"] = cuenta_id
                 cuenta_obj = Cuenta.from_dict(cuenta_data)
-                print(f"DEBUG: Cuenta creada: {cuenta_obj}")
                 cuentas.append(cuenta_obj)
-            print(f"DEBUG: Total cuentas: {len(cuentas)}")
             return cuentas
         except Exception as e:
             print(f"Error obteniendo cuentas: {e}")
             return []
+    
+    @staticmethod
+    def obtener_todas() -> List[Cuenta]:
+        """Obtener todas las cuentas (con caché)"""
+        return CuentaService._obtener_todas_cached()
     
     @staticmethod
     def obtener_por_id(cuenta_id: str) -> Optional[Cuenta]:
@@ -50,7 +52,7 @@ class CuentaService:
     
     @staticmethod
     def crear(nombre: str, saldo_inicial: float = 0.0) -> Optional[Cuenta]:
-        """Crear nueva cuenta"""
+        """Crear nueva cuenta (invalida caché)"""
         try:
             # Validar que el nombre no esté duplicado
             cuentas_existentes = CuentaService.obtener_todas()
@@ -68,6 +70,8 @@ class CuentaService:
             # Agregar a Firebase Realtime Database
             result = firebase_push("cuentas", cuenta_data)
             if result and "name" in result:
+                # Invalidar caché de cuentas
+                CuentaService._obtener_todas_cached.clear()
                 cuenta_data["id"] = result["name"]
                 return Cuenta.from_dict(cuenta_data)
             return None
@@ -77,7 +81,7 @@ class CuentaService:
     
     @staticmethod
     def actualizar(cuenta_id: str, nombre: str, saldo: float) -> bool:
-        """Actualizar cuenta existente"""
+        """Actualizar cuenta existente (invalida caché)"""
         try:
             # Validar que el nombre no esté duplicado (excluyendo la cuenta actual)
             cuentas_existentes = CuentaService.obtener_todas()
@@ -91,16 +95,24 @@ class CuentaService:
                 "nombre": nombre,
                 "saldo": saldo
             }
-            return firebase_set(f"cuentas/{cuenta_id}", cuenta_data)
+            result = firebase_set(f"cuentas/{cuenta_id}", cuenta_data)
+            if result:
+                # Invalidar caché de cuentas
+                CuentaService._obtener_todas_cached.clear()
+            return result
         except Exception as e:
             print(f"Error actualizando cuenta {cuenta_id}: {e}")
             return False
     
     @staticmethod
     def eliminar(cuenta_id: str) -> bool:
-        """Eliminar cuenta"""
+        """Eliminar cuenta (invalida caché)"""
         try:
-            return firebase_delete(f"cuentas/{cuenta_id}")
+            result = firebase_delete(f"cuentas/{cuenta_id}")
+            if result:
+                # Invalidar caché de cuentas
+                CuentaService._obtener_todas_cached.clear()
+            return result
         except Exception as e:
             print(f"Error eliminando cuenta {cuenta_id}: {e}")
             return False

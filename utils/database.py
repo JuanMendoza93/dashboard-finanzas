@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 import requests
+import streamlit as st
 from config.firebase_config import firebase_config
 
 # Configurar Firebase REST API
@@ -37,11 +38,11 @@ def save_data(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 # Funciones para Firebase REST API
-def firebase_get(path=""):
-    """Obtener datos de Firebase"""
+@st.cache_data(ttl=300, max_entries=50, show_spinner=False)
+def _firebase_get_cached(url: str):
+    """Función interna cacheada para consultas GET a Firebase"""
     try:
-        url = f"{FIREBASE_URL}/{path}.json"
-        print(f"[GET] Firebase GET: {url}")
+        print(f"[GET] Firebase GET (cached): {url}")
         response = requests.get(url, timeout=10)
         print(f"[DATA] Status Code: {response.status_code}")
         if response.status_code == 200:
@@ -53,18 +54,31 @@ def firebase_get(path=""):
         print(f"[ERROR] Error Firebase GET: {e}")
         return {}
 
+def firebase_get(path=""):
+    """Obtener datos de Firebase (con caché)"""
+    try:
+        url = f"{FIREBASE_URL}/{path}.json"
+        return _firebase_get_cached(url)
+    except Exception as e:
+        print(f"[ERROR] Error Firebase GET: {e}")
+        return {}
+
 def firebase_set(path, data):
-    """Guardar datos en Firebase"""
+    """Guardar datos en Firebase (invalida caché)"""
     try:
         url = f"{FIREBASE_URL}/{path}.json"
         response = requests.put(url, json=data, timeout=10)
-        return response.status_code == 200
+        if response.status_code == 200:
+            # Invalidar caché relacionado
+            _invalidate_cache_for_path(path)
+            return True
+        return False
     except Exception as e:
         print(f"Error Firebase SET: {e}")
         return False
 
 def firebase_push(path, data):
-    """Agregar datos a Firebase"""
+    """Agregar datos a Firebase (invalida caché)"""
     try:
         url = f"{FIREBASE_URL}/{path}.json"
         print(f"[PUSH] Firebase PUSH: {url}")
@@ -74,6 +88,8 @@ def firebase_push(path, data):
         if response.status_code == 200:
             result = response.json()
             print(f"[OK] Firebase PUSH Success: {result}")
+            # Invalidar caché relacionado
+            _invalidate_cache_for_path(path)
             return result
         return None
     except Exception as e:
@@ -81,11 +97,15 @@ def firebase_push(path, data):
         return None
 
 def firebase_delete(path):
-    """Eliminar datos de Firebase"""
+    """Eliminar datos de Firebase (invalida caché)"""
     try:
         url = f"{FIREBASE_URL}/{path}.json"
         response = requests.delete(url, timeout=10)
-        return response.status_code == 200
+        if response.status_code == 200:
+            # Invalidar caché relacionado
+            _invalidate_cache_for_path(path)
+            return True
+        return False
     except Exception as e:
         print(f"Error Firebase DELETE: {e}")
         return False
@@ -392,3 +412,26 @@ def guardar_metas(metas):
     except Exception as e:
         print(f"Error guardando metas: {e}")
         return False
+
+
+def _invalidate_cache_for_path(path: str):
+    """Invalidar caché basado en el path de Firebase"""
+    try:
+        # Mapear paths de Firebase a claves de caché
+        path_mappings = {
+            'movimientos': 'movimientos',
+            'cuentas': 'cuentas',
+            'configuracion': 'configuracion',
+            'gastos_recurrentes': 'gastos_recurrentes',
+            'metas': 'metas',
+            'reportes_mensuales': 'reportes_mensuales',
+        }
+        
+        # Determinar qué caché invalidar basado en el path
+        for key, cache_key in path_mappings.items():
+            if path.startswith(key):
+                # Limpiar caché de Streamlit
+                st.cache_data.clear()
+                break
+    except Exception as e:
+        print(f"Error invalidando caché: {e}")

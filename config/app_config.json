@@ -92,11 +92,13 @@
       "Entretenimiento",
       "Salud",
       "Educación",
-      "Otros",
       "Niños",
-      "Transporte/Gasolina ",
+      "Transporte/Gasolina",
       "Despensa",
-      "Ingreso"
+      "Ingreso",
+      "Comida amigos",
+      "Comida familia",
+      "Prestamo"
     ],
     "tipos_gasto": [
       "Necesario",

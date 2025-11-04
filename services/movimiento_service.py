@@ -4,6 +4,7 @@ Servicio para gestión de movimientos financieros
 
 from typing import List, Optional
 from datetime import date, datetime
+import streamlit as st
 from models.movimiento import Movimiento
 from utils.database import db, firebase_get, firebase_set, firebase_delete
 from utils.config_manager import config_manager
@@ -13,8 +14,9 @@ class MovimientoService:
     """Servicio para operaciones con movimientos"""
     
     @staticmethod
-    def obtener_todos() -> List[Movimiento]:
-        """Obtener todos los movimientos"""
+    @st.cache_data(ttl=300, max_entries=10, show_spinner=False)
+    def _obtener_todos_cached() -> List[Movimiento]:
+        """Obtener todos los movimientos (función interna cacheada)"""
         try:
             movimientos_data = firebase_get("movimientos")
             if not movimientos_data:
@@ -30,6 +32,11 @@ class MovimientoService:
             return []
     
     @staticmethod
+    def obtener_todos() -> List[Movimiento]:
+        """Obtener todos los movimientos (con caché)"""
+        return MovimientoService._obtener_todos_cached()
+    
+    @staticmethod
     def obtener_por_mes(mes: int, año: int) -> List[Movimiento]:
         """Obtener movimientos de un mes específico"""
         try:
@@ -42,7 +49,7 @@ class MovimientoService:
     @staticmethod
     def crear(fecha: date, concepto: str, categoria: str, tipo_gasto: str, 
               monto: float, tipo: str, pagos_recibidos: float = 0.0) -> Optional[Movimiento]:
-        """Crear nuevo movimiento"""
+        """Crear nuevo movimiento (invalida caché)"""
         try:
             movimiento_data = {
                 "fecha": fecha.isoformat(),
@@ -58,6 +65,8 @@ class MovimientoService:
             from utils.database import firebase_push
             result = firebase_push("movimientos", movimiento_data)
             if result and "name" in result:
+                # Invalidar caché de movimientos
+                MovimientoService._obtener_todos_cached.clear()
                 movimiento_data["id"] = result["name"]
                 return Movimiento.from_dict(movimiento_data)
             return None
@@ -67,9 +76,13 @@ class MovimientoService:
     
     @staticmethod
     def eliminar(movimiento_id: str) -> bool:
-        """Eliminar movimiento"""
+        """Eliminar movimiento (invalida caché)"""
         try:
-            return firebase_delete(f"movimientos/{movimiento_id}")
+            result = firebase_delete(f"movimientos/{movimiento_id}")
+            if result:
+                # Invalidar caché de movimientos
+                MovimientoService._obtener_todos_cached.clear()
+            return result
         except Exception as e:
             print(f"Error eliminando movimiento {movimiento_id}: {e}")
             return False
@@ -179,11 +192,59 @@ class MovimientoService:
             return {}
     
     @staticmethod
+    def obtener_gastos_por_categoria_anual(año: int) -> dict:
+        """Obtener gastos agrupados por categoría para un año completo"""
+        try:
+            gastos_por_categoria = {}
+            
+            # Obtener gastos de todos los meses del año
+            for mes in range(1, 13):
+                movimientos_mes = MovimientoService.obtener_por_mes(mes, año)
+                
+                for movimiento in movimientos_mes:
+                    if movimiento.es_gasto:
+                        categoria = movimiento.categoria
+                        if categoria not in gastos_por_categoria:
+                            gastos_por_categoria[categoria] = 0
+                        gastos_por_categoria[categoria] += movimiento.monto_absoluto
+            
+            return gastos_por_categoria
+        except Exception as e:
+            print(f"Error obteniendo gastos por categoría anual: {e}")
+            return {}
+    
+    @staticmethod
+    def obtener_gastos_por_tipo_anual(año: int) -> dict:
+        """Obtener gastos agrupados por tipo de gasto para un año completo"""
+        try:
+            gastos_por_tipo = {}
+            
+            # Obtener gastos de todos los meses del año
+            for mes in range(1, 13):
+                movimientos_mes = MovimientoService.obtener_por_mes(mes, año)
+                
+                for movimiento in movimientos_mes:
+                    if movimiento.es_gasto:
+                        tipo_gasto = movimiento.tipo_gasto
+                        if tipo_gasto not in gastos_por_tipo:
+                            gastos_por_tipo[tipo_gasto] = 0
+                        gastos_por_tipo[tipo_gasto] += movimiento.monto_absoluto
+            
+            return gastos_por_tipo
+        except Exception as e:
+            print(f"Error obteniendo gastos por tipo anual: {e}")
+            return {}
+    
+    @staticmethod
     def actualizar(movimiento_id: str, datos_actualizados: dict) -> bool:
-        """Actualizar un movimiento existente"""
+        """Actualizar un movimiento existente (invalida caché)"""
         try:
             from utils.database import firebase_set
-            return firebase_set(f"movimientos/{movimiento_id}", datos_actualizados)
+            result = firebase_set(f"movimientos/{movimiento_id}", datos_actualizados)
+            if result:
+                # Invalidar caché de movimientos
+                MovimientoService._obtener_todos_cached.clear()
+            return result
         except Exception as e:
             print(f"Error actualizando movimiento {movimiento_id}: {e}")
             return False

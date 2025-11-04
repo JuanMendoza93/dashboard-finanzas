@@ -255,7 +255,6 @@ def mostrar_analisis_detallado():
     
     st.plotly_chart(fig, use_container_width=True)
 
-
 def mostrar_analisis_anual():
     """Mostrar análisis anual de finanzas"""
     
@@ -388,6 +387,150 @@ def mostrar_analisis_anual():
     )
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Análisis de tipos de gasto del año actual
+    st.divider()
+    st.subheader("🔍 Análisis de Tipos de Gasto - Año Actual")
+    
+    ahora = datetime.now()
+    gastos_por_tipo_anual = MovimientoService.obtener_gastos_por_tipo_anual(ahora.year)
+    
+    if gastos_por_tipo_anual:
+        # Ordenar tipos por monto descendente
+        tipos_ordenados_anual = sorted(gastos_por_tipo_anual.items(), key=lambda x: x[1], reverse=True)
+        
+        # Definir paleta de colores para tipos de gasto
+        colores_por_tipo = {
+            'Necesario': '#2E8B57',      # Verde mar
+            'Innecesario': '#FFD700',    # Amarillo dorado
+            'Emergencia': '#DC143C',     # Rojo carmesí
+            'Lujo': '#9370DB',           # Púrpura medio
+            'Ocio': '#FF6347',           # Tomate
+            'Salud': '#20B2AA',          # Verde azulado
+            'Educación': '#4169E1',      # Azul real
+            'Transporte': '#FF8C00',     # Naranja oscuro
+            'Alimentación': '#32CD32',   # Verde lima
+            'Vivienda': '#8B4513'        # Marrón silla de montar
+        }
+        
+        # Paleta de colores adicionales para tipos no definidos
+        colores_adicionales = ['#FF1493', '#00CED1', '#FF69B4', '#8A2BE2', '#FF4500', 
+                              '#00FF7F', '#4682B4', '#FF7F50', '#DA70D6', '#98FB98']
+        
+        # Asignar colores a cada tipo
+        colores_lista = []
+        tipos_lista = list(gastos_por_tipo_anual.keys())
+        valores_lista = list(gastos_por_tipo_anual.values())
+        
+        for tipo in tipos_lista:
+            if tipo in colores_por_tipo:
+                colores_lista.append(colores_por_tipo[tipo])
+            else:
+                # Usar colores adicionales rotando si no hay color definido
+                colores_lista.append(colores_adicionales[len(colores_lista) % len(colores_adicionales)])
+        
+        # Gráfico de pastel con colores diferentes
+        st.markdown("**📊 Distribución de Gastos por Tipo de Gasto del Año:**")
+        fig_pastel_tipos = go.Figure(data=[
+            go.Pie(
+                labels=tipos_lista,
+                values=valores_lista,
+                textinfo='label+percent+value',
+                texttemplate='%{label}<br>%{percent}<br>$%{value:,.0f}',
+                hovertemplate='<b>%{label}</b><br>Monto: $%{value:,.2f}<br>Porcentaje: %{percent}<extra></extra>',
+                marker=dict(colors=colores_lista)
+            )
+        ])
+        fig_pastel_tipos.update_layout(
+            title=f"Distribución de Gastos por Tipo de Gasto del Año {ahora.year}",
+            height=500
+        )
+        st.plotly_chart(fig_pastel_tipos, use_container_width=True)
+    else:
+        st.info("No hay gastos registrados por tipo para el año actual")
+    
+    # Análisis de categorías de gastos del año actual
+    st.divider()
+    st.subheader("🏷️ Análisis de Categorías - Año Actual")
+    
+    gastos_por_categoria_anual = MovimientoService.obtener_gastos_por_categoria_anual(ahora.year)
+    
+    if gastos_por_categoria_anual:
+        # Ordenar categorías por monto descendente
+        categorias_ordenadas_anual = sorted(gastos_por_categoria_anual.items(), key=lambda x: x[1], reverse=True)
+        
+        # Gráfico de pastel con todas las categorías del año
+        st.markdown("**📊 Distribución Completa de Gastos por Categoría del Año:**")
+        fig_pastel_anual = go.Figure(data=[
+            go.Pie(
+                labels=list(gastos_por_categoria_anual.keys()),
+                values=list(gastos_por_categoria_anual.values()),
+                textinfo='label+percent+value',
+                texttemplate='%{label}<br>%{percent}<br>$%{value:,.0f}',
+                hovertemplate='<b>%{label}</b><br>Monto: $%{value:,.2f}<br>Porcentaje: %{percent}<extra></extra>'
+            )
+        ])
+        fig_pastel_anual.update_layout(
+            title=f"Distribución de Gastos por Categoría del Año {ahora.year}",
+            height=500
+        )
+        st.plotly_chart(fig_pastel_anual, use_container_width=True)
+        
+        # Análisis comparativo por año (si hay datos de años anteriores)
+        st.divider()
+        st.subheader("📈 Comparación de Categorías por Año")
+        
+        # Crear un selector para elegir el año a analizar
+        año_seleccionado = st.selectbox(
+            "Selecciona un año para ver su análisis de categorías:",
+            años_a_analizar[::-1],
+            index=0,
+            key="selector_año_categorias"
+        )
+        
+        if año_seleccionado:
+            gastos_por_categoria_seleccionado = MovimientoService.obtener_gastos_por_categoria_anual(año_seleccionado)
+            
+            if gastos_por_categoria_seleccionado:
+                categorias_ordenadas_seleccionado = sorted(
+                    gastos_por_categoria_seleccionado.items(), 
+                    key=lambda x: x[1], 
+                    reverse=True
+                )
+                
+                st.markdown(f"**🏷️ Top 5 Categorías de {año_seleccionado}:**")
+                for i, (categoria, monto) in enumerate(categorias_ordenadas_seleccionado[:5], 1):
+                    porcentaje = (monto / sum(gastos_por_categoria_seleccionado.values())) * 100
+                    st.write(f"**#{i}** 🏷️ {categoria} - {config_manager.get_formatted_currency(monto)} ({porcentaje:.1f}%)")
+                
+                # Gráfico de barras para el año seleccionado con colores diferentes
+                top_5_seleccionado = dict(categorias_ordenadas_seleccionado[:5])
+                
+                # Paleta de colores para las barras
+                colores_barras = ['#DC143C', '#4169E1', '#2E8B57', '#FF8C00', '#9370DB', 
+                                 '#FF1493', '#00CED1', '#FF69B4', '#8A2BE2', '#FF4500']
+                
+                fig_barras_seleccionado = go.Figure(data=[
+                    go.Bar(
+                        y=list(top_5_seleccionado.keys()),
+                        x=list(top_5_seleccionado.values()),
+                        orientation='h',
+                        marker=dict(color=colores_barras[:len(top_5_seleccionado)]),
+                        text=[f"${val:,.2f}" for val in top_5_seleccionado.values()],
+                        textposition='auto'
+                    )
+                ])
+                fig_barras_seleccionado.update_layout(
+                    title=f"Top 5 Categorías de {año_seleccionado}",
+                    xaxis_title="Monto ($)",
+                    yaxis_title="Categoría",
+                    height=300
+                )
+                st.plotly_chart(fig_barras_seleccionado, use_container_width=True)
+            else:
+                st.info(f"No hay gastos registrados para el año {año_seleccionado}")
+    else:
+        st.info("No hay gastos registrados para el año actual")
 
 
 if __name__ == "__main__":

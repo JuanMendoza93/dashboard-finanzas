@@ -5,6 +5,7 @@ Servicio para generación de reportes
 from typing import List, Dict, Any, Optional
 from datetime import datetime, date
 import pandas as pd
+import streamlit as st
 from calendar import monthrange
 from models.cuenta import Cuenta
 from models.movimiento import Movimiento
@@ -18,8 +19,9 @@ class ReporteService:
     """Servicio para generación de reportes"""
     
     @staticmethod
+    @st.cache_data(ttl=60, max_entries=5, show_spinner=False)
     def generar_resumen_financiero() -> Dict[str, Any]:
-        """Generar resumen financiero completo"""
+        """Generar resumen financiero completo (con caché de 60 segundos)"""
         try:
             # Obtener datos
             cuentas = CuentaService.obtener_todas()
@@ -336,6 +338,7 @@ class ReporteService:
             return 0.0
     
     @staticmethod
+    @st.cache_data(ttl=300, max_entries=20, show_spinner=False)
     def obtener_reportes_mensuales() -> List[Dict[str, Any]]:
         """Obtener todos los reportes mensuales guardados"""
         try:
@@ -369,7 +372,11 @@ class ReporteService:
             
             # Guardar en Firebase con una clave única
             clave = f"{año}_{mes:02d}"
-            return firebase_set(f"reportes_mensuales/{clave}", datos)
+            result = firebase_set(f"reportes_mensuales/{clave}", datos)
+            if result:
+                # Invalidar caché de reportes mensuales
+                ReporteService.obtener_reportes_mensuales.clear()
+            return result
         except Exception as e:
             print(f"Error guardando reporte mensual: {e}")
             return False
