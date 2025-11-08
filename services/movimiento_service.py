@@ -6,7 +6,8 @@ from typing import List, Optional
 from datetime import date, datetime
 import streamlit as st
 from models.movimiento import Movimiento
-from utils.database import db, firebase_get, firebase_set, firebase_delete
+from utils.database import db, firebase_get, firebase_set, firebase_delete, firebase_push
+from utils.firebase_namespace import get_financial_path
 from utils.config_manager import config_manager
 
 
@@ -18,7 +19,8 @@ class MovimientoService:
     def _obtener_todos_cached() -> List[Movimiento]:
         """Obtener todos los movimientos (función interna cacheada)"""
         try:
-            movimientos_data = firebase_get("movimientos")
+            # Usar get_financial_path para apuntar a la nueva estructura
+            movimientos_data = firebase_get(get_financial_path("movimientos"))
             if not movimientos_data:
                 return []
             
@@ -61,9 +63,8 @@ class MovimientoService:
                 "pagos_recibidos": pagos_recibidos
             }
             
-            # Agregar a Firebase Realtime Database
-            from utils.database import firebase_push
-            result = firebase_push("movimientos", movimiento_data)
+            # Agregar a Firebase Realtime Database usando la nueva estructura
+            result = firebase_push(get_financial_path("movimientos"), movimiento_data)
             if result and "name" in result:
                 # Invalidar caché de movimientos
                 MovimientoService._obtener_todos_cached.clear()
@@ -78,7 +79,8 @@ class MovimientoService:
     def eliminar(movimiento_id: str) -> bool:
         """Eliminar movimiento (invalida caché)"""
         try:
-            result = firebase_delete(f"movimientos/{movimiento_id}")
+            # Usar get_financial_path para apuntar a la nueva estructura
+            result = firebase_delete(f"{get_financial_path('movimientos')}/{movimiento_id}")
             if result:
                 # Invalidar caché de movimientos
                 MovimientoService._obtener_todos_cached.clear()
@@ -240,7 +242,8 @@ class MovimientoService:
         """Actualizar un movimiento existente (invalida caché)"""
         try:
             from utils.database import firebase_set
-            result = firebase_set(f"movimientos/{movimiento_id}", datos_actualizados)
+            # Usar get_financial_path para apuntar a la nueva estructura
+            result = firebase_set(f"{get_financial_path('movimientos')}/{movimiento_id}", datos_actualizados)
             if result:
                 # Invalidar caché de movimientos
                 MovimientoService._obtener_todos_cached.clear()

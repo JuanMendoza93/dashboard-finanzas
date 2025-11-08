@@ -98,7 +98,9 @@
       "Ingreso",
       "Comida amigos",
       "Comida familia",
-      "Prestamo"
+      "Prestamo",
+      "Artículos",
+      "Comida trabajo"
     ],
     "tipos_gasto": [
       "Necesario",

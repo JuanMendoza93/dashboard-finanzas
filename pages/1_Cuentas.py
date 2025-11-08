@@ -28,33 +28,33 @@ def main():
     # Mostrar cuentas existentes
     mostrar_cuentas()
     
-    # Formulario para agregar nueva cuenta
+    # Formulario para agregar nueva cuenta (colapsado por defecto)
     st.divider()
-    st.subheader("➕ Agregar Nueva Cuenta")
     
-    with st.form("nueva_cuenta"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            nombre_cuenta = st.text_input("🏦 Nombre de la Cuenta", placeholder="Ej: Cuenta Corriente, Ahorros, etc.")
-        
-        with col2:
-            saldo_inicial = st.text_input("💰 Saldo Inicial", placeholder="0.00", help="Ingresa el saldo inicial de la cuenta")
-        
-        if st.form_submit_button("💾 Crear Cuenta", use_container_width=True):
-            if nombre_cuenta and saldo_inicial:
-                try:
-                    saldo_float = float(saldo_inicial)
-                    cuenta = CuentaService.crear(nombre_cuenta, saldo_float)
-                    if cuenta:
-                        st.success(f"✅ Cuenta '{nombre_cuenta}' creada exitosamente!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Error al crear la cuenta. Verifica que el nombre no esté duplicado.")
-                except ValueError:
-                    st.error("❌ Por favor ingresa un saldo válido (solo números)")
-            else:
-                st.error("❌ Por favor completa todos los campos")
+    with st.expander("➕ Agregar Nueva Cuenta", expanded=False):
+        with st.form("nueva_cuenta"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                nombre_cuenta = st.text_input("🏦 Nombre de la Cuenta", placeholder="Ej: Cuenta Corriente, Ahorros, etc.")
+            
+            with col2:
+                saldo_inicial = st.text_input("💰 Saldo Inicial", placeholder="0.00", help="Ingresa el saldo inicial de la cuenta")
+            
+            if st.form_submit_button("💾 Crear Cuenta", use_container_width=True):
+                if nombre_cuenta and saldo_inicial:
+                    try:
+                        saldo_float = float(saldo_inicial)
+                        cuenta = CuentaService.crear(nombre_cuenta, saldo_float)
+                        if cuenta:
+                            st.success(f"✅ Cuenta '{nombre_cuenta}' creada exitosamente!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al crear la cuenta. Verifica que el nombre no esté duplicado.")
+                    except ValueError:
+                        st.error("❌ Por favor ingresa un saldo válido (solo números)")
+                else:
+                    st.error("❌ Por favor completa todos los campos")
 
 
 def mostrar_cuentas():
@@ -92,6 +92,9 @@ def mostrar_cuentas():
                 with col_del:
                     if st.button("🗑️", key=f"del_{cuenta.id}", use_container_width=True):
                         if CuentaService.eliminar(cuenta.id):
+                            # Limpiar caché explícitamente antes del rerun
+                            CuentaService._obtener_todas_cached.clear()
+                            st.cache_data.clear()
                             st.success(f"✅ Cuenta '{cuenta.nombre}' eliminada!")
                             st.rerun()
                         else:
@@ -118,6 +121,9 @@ def mostrar_cuentas():
                                 try:
                                     saldo_float = float(nuevo_saldo)
                                     if CuentaService.actualizar(cuenta.id, nuevo_nombre, saldo_float):
+                                        # Limpiar caché explícitamente antes del rerun
+                                        CuentaService._obtener_todas_cached.clear()
+                                        st.cache_data.clear()
                                         st.success("✅ Cuenta actualizada exitosamente!")
                                         st.session_state[f"editando_cuenta_{cuenta.id}"] = False
                                         st.rerun()

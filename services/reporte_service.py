@@ -13,6 +13,7 @@ from models.presupuesto import Presupuesto, MetaAhorro
 from services.cuenta_service import CuentaService
 from services.movimiento_service import MovimientoService
 from utils.database import firebase_get, firebase_set
+from utils.firebase_namespace import get_financial_path
 
 
 class ReporteService:
@@ -38,16 +39,29 @@ class ReporteService:
             # Ahorro actual = Ingresos - Gastos (del mes actual)
             ahorro_actual = ingresos_mes - gastos_mes
             
-            # Calcular ahorro acumulado del año actual (desde enero hasta el mes actual)
+            # Calcular ahorro acumulado del año actual usando ahorro REAL mensual
+            # El ahorro real es el incremento real del saldo de las cuentas mes a mes
             ahorro_acumulado_anual = 0
             año_actual = ahora.year
-            for mes in range(1, ahora.month + 1):
-                gastos_mes_temp = MovimientoService.calcular_gastos_mes(mes, año_actual)
-                ingresos_mes_temp = MovimientoService.calcular_ingresos_mes(mes, año_actual)
-                ahorro_mes_temp = ingresos_mes_temp - gastos_mes_temp
-                ahorro_acumulado_anual += ahorro_mes_temp
             
-            # Top gastos del mes actual
+            # Obtener reportes mensuales para usar ahorro real guardado
+            reportes_mensuales = ReporteService.obtener_reportes_mensuales()
+            
+            for mes in range(1, ahora.month + 1):
+                # Primero intentar obtener el ahorro real del reporte guardado
+                ahorro_real_mes = None
+                for reporte in reportes_mensuales:
+                    if reporte.get("mes") == mes and reporte.get("año") == año_actual:
+                        ahorro_real_mes = reporte.get("ahorro_real", 0)
+                        break
+                
+                # Si no hay reporte guardado, calcular el ahorro real del mes
+                if ahorro_real_mes is None:
+                    ahorro_real_mes = ReporteService.calcular_ahorro_real_mes(mes, año_actual)
+                
+                ahorro_acumulado_anual += ahorro_real_mes
+            
+            # Top gastos del mes actual (top 5)
             top_gastos = MovimientoService.obtener_top_gastos(5, ahora.month, ahora.year)
             
             # Gastos por categoría
@@ -144,8 +158,8 @@ class ReporteService:
     def generar_reporte_ahorro() -> Dict[str, Any]:
         """Generar reporte de ahorro"""
         try:
-            # Obtener metas
-            metas_data = firebase_get("metas")
+            # Obtener metas usando la nueva estructura
+            metas_data = firebase_get(get_financial_path("metas"))
             if not metas_data:
                 return {}
             
@@ -342,7 +356,8 @@ class ReporteService:
     def obtener_reportes_mensuales() -> List[Dict[str, Any]]:
         """Obtener todos los reportes mensuales guardados"""
         try:
-            reportes_data = firebase_get("reportes_mensuales")
+            # Usar get_financial_path para apuntar a la nueva estructura
+            reportes_data = firebase_get(get_financial_path("reportes_mensuales"))
             if not reportes_data:
                 return []
             
@@ -370,9 +385,9 @@ class ReporteService:
             datos["año"] = año
             datos["fecha_generacion"] = datetime.now().isoformat()
             
-            # Guardar en Firebase con una clave única
+            # Guardar en Firebase con una clave única usando la nueva estructura
             clave = f"{año}_{mes:02d}"
-            result = firebase_set(f"reportes_mensuales/{clave}", datos)
+            result = firebase_set(f"{get_financial_path('reportes_mensuales')}/{clave}", datos)
             if result:
                 # Invalidar caché de reportes mensuales
                 ReporteService.obtener_reportes_mensuales.clear()

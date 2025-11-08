@@ -27,39 +27,39 @@ def main():
     # Mostrar metas actuales
     mostrar_metas_actuales(metas)
     
-    # Formulario para establecer/actualizar metas
+    # Formulario para establecer/actualizar metas (colapsado por defecto)
     st.divider()
-    st.subheader("🎯 Establecer Metas de Ahorro")
     
-    with st.form("metas_ahorro"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            meta_mensual = st.number_input("💰 Meta Mensual", 
-                                        value=float(metas.get("meta_mensual", 0)), 
-                                        min_value=0.0, step=100.0, format="%.2f",
-                                        help="Cantidad que deseas ahorrar cada mes")
-        
-        with col2:
-            meta_anual = st.number_input("🎯 Meta Anual", 
-                                      value=float(metas.get("meta_anual", 0)), 
-                                      min_value=0.0, step=1000.0, format="%.2f",
-                                      help="Cantidad total que deseas ahorrar en el año")
-        
-        if st.form_submit_button("💾 Guardar Metas", use_container_width=True):
-            if meta_mensual > 0 or meta_anual > 0:
-                nuevas_metas = {
-                    "meta_mensual": meta_mensual,
-                    "meta_anual": meta_anual
-                }
-                
-                if guardar_metas(nuevas_metas):
-                    st.success("✅ Metas guardadas exitosamente!")
-                    st.rerun()
+    with st.expander("🎯 Establecer Metas de Ahorro", expanded=False):
+        with st.form("metas_ahorro"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                meta_mensual = st.number_input("💰 Meta Mensual", 
+                                            value=float(metas.get("meta_mensual", 0)), 
+                                            min_value=0.0, step=100.0, format="%.2f",
+                                            help="Cantidad que deseas ahorrar cada mes")
+            
+            with col2:
+                meta_anual = st.number_input("🎯 Meta Anual", 
+                                          value=float(metas.get("meta_anual", 0)), 
+                                          min_value=0.0, step=1000.0, format="%.2f",
+                                          help="Cantidad total que deseas ahorrar en el año")
+            
+            if st.form_submit_button("💾 Guardar Metas", use_container_width=True):
+                if meta_mensual > 0 or meta_anual > 0:
+                    nuevas_metas = {
+                        "meta_mensual": meta_mensual,
+                        "meta_anual": meta_anual
+                    }
+                    
+                    if guardar_metas(nuevas_metas):
+                        st.success("✅ Metas guardadas exitosamente!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Error al guardar las metas")
                 else:
-                    st.error("❌ Error al guardar las metas")
-            else:
-                st.error("❌ Por favor establece al menos una meta")
+                    st.error("❌ Por favor establece al menos una meta")
 
 
 def mostrar_metas_actuales(metas):

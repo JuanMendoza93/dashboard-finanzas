@@ -254,6 +254,77 @@ def mostrar_analisis_detallado():
     )
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Agregar sección de Progreso Mensual
+    st.divider()
+    st.subheader("📅 Progreso Mensual")
+    
+    # Obtener metas desde la base de datos
+    from utils.database import cargar_metas
+    metas = cargar_metas()
+    meta_mensual = metas.get("meta_mensual", 0)
+    
+    if meta_mensual > 0:
+        # Obtener ahorro del mes actual
+        ahora = datetime.now()
+        ahorro_actual = ReporteService.generar_resumen_financiero().get("ahorro_actual", 0)
+        
+        # Calcular progreso mensual
+        progreso_mensual = min(ahorro_actual / meta_mensual, 2.0) * 100
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric(
+                "💰 Ahorro del Mes Actual",
+                config_manager.get_formatted_currency(ahorro_actual),
+                delta=f"Meta: {config_manager.get_formatted_currency(meta_mensual)}"
+            )
+        
+        with col2:
+            st.metric(
+                "📅 Progreso Mensual",
+                f"{progreso_mensual:.1f}%",
+                delta=f"Meta: {config_manager.get_formatted_currency(meta_mensual)}"
+            )
+        
+        # Gráfico de progreso mensual (velocímetro)
+        fig_mensual = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=progreso_mensual,
+            domain={'x': [0, 1], 'y': [0, 1]},
+            title={'text': "Progreso Ahorro Mensual"},
+            number={'valueformat': '.1f', 'suffix': '%'},
+            gauge={
+                'axis': {'range': [0, 200]},
+                'bar': {'color': "darkgreen"},
+                'steps': [
+                    {'range': [0, 75], 'color': "red"},
+                    {'range': [75, 100], 'color': "orange"},
+                    {'range': [100, 150], 'color': "lightgreen"},
+                    {'range': [150, 200], 'color': "green"}
+                ],
+                'threshold': {
+                    'line': {'color': "green", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 100
+                }
+            }
+        ))
+        fig_mensual.update_layout(height=300)
+        st.plotly_chart(fig_mensual, use_container_width=True)
+        
+        # Mostrar información adicional
+        if progreso_mensual < 75:
+            st.error("🔴 Necesitas más ahorro para alcanzar tu meta mensual")
+        elif progreso_mensual < 100:
+            st.warning("🟡 Estás cerca de tu meta mensual")
+        elif progreso_mensual < 150:
+            st.success("🟢 ¡Excelente! Has superado tu meta mensual")
+        else:
+            st.success("🟢 ¡Increíble! Has duplicado tu meta mensual")
+    else:
+        st.info("No hay meta mensual configurada")
 
 def mostrar_analisis_anual():
     """Mostrar análisis anual de finanzas"""
@@ -387,6 +458,78 @@ def mostrar_analisis_anual():
     )
     
     st.plotly_chart(fig, use_container_width=True)
+    
+    # Agregar sección de Ahorro Anual Acumulado
+    st.divider()
+    st.subheader("💰 Ahorro Anual Acumulado")
+    
+    # Obtener metas desde la base de datos
+    from utils.database import cargar_metas
+    metas = cargar_metas()
+    meta_anual = metas.get("meta_anual", 0)
+    
+    if meta_anual > 0:
+        # Obtener ahorro acumulado del año actual
+        ahora = datetime.now()
+        resumen = ReporteService.generar_resumen_financiero()
+        ahorro_acumulado_anual = resumen.get("ahorro_acumulado_anual", 0)
+        
+        # Calcular progreso anual
+        progreso_anual = min(ahorro_acumulado_anual / meta_anual, 2.0) * 100
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric(
+                "💰 Ahorro Anual Acumulado",
+                config_manager.get_formatted_currency(ahorro_acumulado_anual),
+                delta=f"Meta: {config_manager.get_formatted_currency(meta_anual)}"
+            )
+        
+        with col2:
+            st.metric(
+                "📅 Progreso Anual",
+                f"{progreso_anual:.1f}%",
+                delta=f"Meta: {config_manager.get_formatted_currency(meta_anual)}"
+            )
+        
+        # Gráfico de progreso anual (velocímetro)
+        fig_anual = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=progreso_anual,
+            domain={'x': [0, 1], 'y': [0, 1]},
+            title={'text': "Progreso Ahorro Anual"},
+            number={'valueformat': '.1f', 'suffix': '%'},
+            gauge={
+                'axis': {'range': [0, 200]},
+                'bar': {'color': "darkgreen"},
+                'steps': [
+                    {'range': [0, 75], 'color': "red"},
+                    {'range': [75, 100], 'color': "orange"},
+                    {'range': [100, 150], 'color': "lightgreen"},
+                    {'range': [150, 200], 'color': "green"}
+                ],
+                'threshold': {
+                    'line': {'color': "green", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 100
+                }
+            }
+        ))
+        fig_anual.update_layout(height=300)
+        st.plotly_chart(fig_anual, use_container_width=True)
+        
+        # Mostrar información adicional
+        if progreso_anual < 75:
+            st.error("🔴 Necesitas más ahorro para alcanzar tu meta anual")
+        elif progreso_anual < 100:
+            st.warning("🟡 Estás cerca de tu meta anual")
+        elif progreso_anual < 150:
+            st.success("🟢 ¡Excelente! Has superado tu meta anual")
+        else:
+            st.success("🟢 ¡Increíble! Has duplicado tu meta anual")
+    else:
+        st.info("No hay meta anual configurada")
     
     # Análisis de tipos de gasto del año actual
     st.divider()

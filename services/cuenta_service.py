@@ -6,6 +6,7 @@ from typing import List, Optional
 import streamlit as st
 from models.cuenta import Cuenta
 from utils.database import db, firebase_get, firebase_set, firebase_delete, firebase_push
+from utils.firebase_namespace import get_financial_path
 from utils.config_manager import config_manager
 
 
@@ -17,7 +18,8 @@ class CuentaService:
     def _obtener_todas_cached() -> List[Cuenta]:
         """Obtener todas las cuentas (función interna cacheada)"""
         try:
-            cuentas_data = firebase_get("cuentas")
+            # Usar get_financial_path para apuntar a la nueva estructura
+            cuentas_data = firebase_get(get_financial_path("cuentas"))
             if not cuentas_data:
                 return []
             
@@ -40,7 +42,8 @@ class CuentaService:
     def obtener_por_id(cuenta_id: str) -> Optional[Cuenta]:
         """Obtener cuenta por ID"""
         try:
-            cuenta_data = firebase_get(f"cuentas/{cuenta_id}")
+            # Usar get_financial_path para apuntar a la nueva estructura
+            cuenta_data = firebase_get(f"{get_financial_path('cuentas')}/{cuenta_id}")
             if not cuenta_data:
                 return None
             
@@ -67,8 +70,8 @@ class CuentaService:
                 "saldo": saldo_inicial
             }
             
-            # Agregar a Firebase Realtime Database
-            result = firebase_push("cuentas", cuenta_data)
+            # Agregar a Firebase Realtime Database usando la nueva estructura
+            result = firebase_push(get_financial_path("cuentas"), cuenta_data)
             if result and "name" in result:
                 # Invalidar caché de cuentas
                 CuentaService._obtener_todas_cached.clear()
@@ -95,7 +98,8 @@ class CuentaService:
                 "nombre": nombre,
                 "saldo": saldo
             }
-            result = firebase_set(f"cuentas/{cuenta_id}", cuenta_data)
+            # Usar get_financial_path para apuntar a la nueva estructura
+            result = firebase_set(f"{get_financial_path('cuentas')}/{cuenta_id}", cuenta_data)
             if result:
                 # Invalidar caché de cuentas
                 CuentaService._obtener_todas_cached.clear()
@@ -108,7 +112,8 @@ class CuentaService:
     def eliminar(cuenta_id: str) -> bool:
         """Eliminar cuenta (invalida caché)"""
         try:
-            result = firebase_delete(f"cuentas/{cuenta_id}")
+            # Usar get_financial_path para apuntar a la nueva estructura
+            result = firebase_delete(f"{get_financial_path('cuentas')}/{cuenta_id}")
             if result:
                 # Invalidar caché de cuentas
                 CuentaService._obtener_todas_cached.clear()

@@ -27,6 +27,11 @@ def main():
     # Cargar configuración
     configuracion = cargar_configuracion()
     
+    # Validar que la configuración tenga datos
+    if not configuracion or not configuracion.get("categorias") or not configuracion.get("tipos_gasto"):
+        st.error("❌ Error: La configuración no tiene categorías o tipos de gasto. Por favor, ve a Configuración y agrega al menos una categoría y un tipo de gasto.")
+        return
+    
     st.divider()
     
     # Filtros por mes y año
@@ -49,64 +54,74 @@ def main():
     # Mover el formulario después de definir las variables
     st.divider()
     
-    # Formulario colapsable para agregar nuevo movimiento
-    with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
-        with st.form("nuevo_movimiento"):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                concepto = st.text_input("📝 Concepto")
-                fecha = st.date_input("📅 Fecha", value=date.today())
-                monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
+    # Obtener listas de categorías y tipos de gasto
+    categorias = configuracion.get("categorias", [])
+    tipos_gasto = configuracion.get("tipos_gasto", [])
+    
+    # Verificar que las listas no estén vacías
+    if not categorias or not tipos_gasto:
+        st.warning("⚠️ No hay categorías o tipos de gasto configurados. Por favor, ve a Configuración y agrega al menos una categoría y un tipo de gasto.")
+    else:
+        # Formulario para agregar nuevo movimiento (colapsado por defecto)
+        with st.expander("➕ Agregar Nuevo Movimiento", expanded=False):
+            with st.form("nuevo_movimiento"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    concepto = st.text_input("📝 Concepto")
+                    fecha = st.date_input("📅 Fecha", value=date.today())
+                    monto = st.number_input("💰 Monto", min_value=0.0, step=0.01, format="%.2f")
 
-            with col2:
-                categoria = st.selectbox("📂 Categoría", configuracion["categorias"])
-                tipo_gasto = st.selectbox("🔍 Tipo de Gasto", configuracion["tipos_gasto"])
-                tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso", "Pago"])
-            
-            st.divider()
-            
-            # Botones para agregar nuevas opciones (dentro del formulario)
-            st.markdown("**🔧 ¿Necesitas agregar nuevas opciones?**")
-            col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-                if st.form_submit_button("➕ Nueva Categoría", help="Agregar nueva categoría", use_container_width=True):
-                    st.session_state["agregando_categoria"] = True
-            with col_btn2:
-                if st.form_submit_button("➕ Nuevo Tipo de Gasto", help="Agregar nuevo tipo de gasto", use_container_width=True):
-                    st.session_state["agregando_tipo_gasto"] = True
-            
-            st.divider()
-            
-            if st.form_submit_button("💾 Guardar Movimiento", use_container_width=True):
-                if concepto and monto > 0:
-                    # Validar duplicados
-                    movimientos_existentes = MovimientoService.obtener_por_mes(mes_seleccionado, año_seleccionado)
-                    duplicado = any(
-                        m.fecha == fecha and m.concepto == concepto and m.monto == monto
-                        for m in movimientos_existentes
-                    )
-                    
-                    if duplicado:
-                        st.error("❌ Ya existe un movimiento con la misma fecha, concepto y monto")
-                    else:
-                        # Crear movimiento
-                        movimiento = MovimientoService.crear(
-                            fecha=fecha,
-                            concepto=concepto,
-                            categoria=categoria,
-                            tipo_gasto=tipo_gasto,
-                            monto=monto,
-                            tipo=tipo
+                with col2:
+                    categoria = st.selectbox("📂 Categoría", categorias)
+                    tipo_gasto = st.selectbox("🔍 Tipo de Gasto", tipos_gasto)
+                    tipo = st.radio("📊 Tipo", ["Gasto", "Ingreso", "Pago"])
+                
+                st.divider()
+                
+                # Botones para agregar nuevas opciones (dentro del formulario)
+                st.markdown("**🔧 ¿Necesitas agregar nuevas opciones?**")
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.form_submit_button("➕ Nueva Categoría", help="Agregar nueva categoría", use_container_width=True):
+                        st.session_state["agregando_categoria"] = True
+                with col_btn2:
+                    if st.form_submit_button("➕ Nuevo Tipo de Gasto", help="Agregar nuevo tipo de gasto", use_container_width=True):
+                        st.session_state["agregando_tipo_gasto"] = True
+                
+                st.divider()
+                
+                if st.form_submit_button("💾 Guardar Movimiento", use_container_width=True):
+                    if concepto and monto > 0:
+                        # Validar duplicados
+                        movimientos_existentes = MovimientoService.obtener_por_mes(mes_seleccionado, año_seleccionado)
+                        duplicado = any(
+                            m.fecha == fecha and m.concepto == concepto and m.monto == monto
+                            for m in movimientos_existentes
                         )
                         
-                        if movimiento:
-                            st.success("✅ Movimiento agregado correctamente")
-                            st.rerun()
+                        if duplicado:
+                            st.error("❌ Ya existe un movimiento con la misma fecha, concepto y monto")
                         else:
-                            st.error("❌ Error al agregar el movimiento")
-                else:
-                    st.error("❌ Por favor completa todos los campos")
+                            # Crear movimiento
+                            movimiento = MovimientoService.crear(
+                                fecha=fecha,
+                                concepto=concepto,
+                                categoria=categoria,
+                                tipo_gasto=tipo_gasto,
+                                monto=monto,
+                                tipo=tipo
+                            )
+                            
+                            if movimiento:
+                                st.success("✅ Movimiento agregado correctamente")
+                                st.rerun()
+                            else:
+                                st.error("❌ Error al agregar el movimiento")
+                    else:
+                        st.error("❌ Por favor completa todos los campos")
+    
+    st.divider()
     
     # Formularios para agregar nuevas categorías y tipos de gasto
     if st.session_state.get("agregando_categoria", False):
@@ -345,6 +360,9 @@ def mostrar_movimientos(mes, año, configuracion):
                     with col_del:
                         if st.button("🗑️", key=f"del_{movimiento.id}", help="Eliminar"):
                             if MovimientoService.eliminar(movimiento.id):
+                                # Limpiar caché explícitamente antes del rerun
+                                MovimientoService._obtener_todos_cached.clear()
+                                st.cache_data.clear()
                                 st.success(f"✅ Movimiento eliminado!")
                                 st.rerun()
                             else:
@@ -400,6 +418,9 @@ def mostrar_movimientos(mes, año, configuracion):
                     }
                     
                     if MovimientoService.actualizar(movimiento_en_edicion.id, datos_actualizados):
+                        # Limpiar caché explícitamente antes del rerun
+                        MovimientoService._obtener_todos_cached.clear()
+                        st.cache_data.clear()
                         st.success("✅ Movimiento actualizado exitosamente!")
                         st.session_state[f"editando_movimiento_{movimiento_en_edicion.id}"] = False
                         st.rerun()

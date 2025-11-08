@@ -8,30 +8,203 @@ from datetime import datetime, date
 
 
 def mostrar_navegacion_lateral():
-    """Mostrar navegación lateral personalizada"""
-    st.sidebar.markdown("### 🧭 Navegación")
+    """Mostrar navegación lateral personalizada (detecta automáticamente el módulo)"""
+    # Detectar si estamos en el módulo nutricional o financiero
+    mostrar_dashboard = st.session_state.get("mostrar_dashboard")
     
-    # Botones de navegación principales
-    if st.sidebar.button("🏠 Dashboard", use_container_width=True, type="primary"):
-        navegar_a_pagina("app.py")
+    # Verificar si ya se mostró la navegación en esta ejecución para evitar duplicados
+    # Solo verificar si se llama desde una página individual cuando ya se mostró desde Home.py
+    nav_key = "nav_lateral_shown_this_run"
+    if st.session_state.get(nav_key, False):
+        return  # Ya se mostró en esta ejecución, evitar duplicados
     
-    if st.sidebar.button("🏦 Cuentas", use_container_width=True):
-        navegar_a_pagina("pages/1_Cuentas.py")
+    st.session_state[nav_key] = True
     
-    if st.sidebar.button("💰 Movimientos", use_container_width=True):
-        navegar_a_pagina("pages/2_Movimientos.py")
+    if mostrar_dashboard == "nutricional":
+        mostrar_navegacion_lateral_nutricional()
+    else:
+        mostrar_navegacion_lateral_financiera()
+
+
+def mostrar_navegacion_lateral_financiera():
+    """Mostrar navegación lateral para el módulo financiero"""
+    # Verificar si ya se mostró la navegación en esta ejecución para evitar duplicados
+    # Este flag previene que se muestre dos veces cuando se llama desde Home.py y desde páginas individuales
+    nav_key = "nav_financiera_shown_this_run"
     
-    if st.sidebar.button("📊 Reportes", use_container_width=True):
-        navegar_a_pagina("pages/3_Reportes.py")
+    # Solo verificar el flag si se llama desde una página individual (no desde Home.py)
+    # Si se llama desde Home.py, siempre mostrar los botones
+    # Detectar si se llama desde una página individual verificando si ya se mostró desde Home.py
+    if st.session_state.get(nav_key, False):
+        # Si el flag está establecido, significa que ya se mostró desde Home.py
+        # En este caso, no mostrar de nuevo para evitar duplicados
+        return  # Ya se mostró en esta ejecución, evitar duplicados
     
-    if st.sidebar.button("💳 Gastos Recurrentes", use_container_width=True):
-        navegar_a_pagina("pages/4_Gastos_Recurrentes.py")
+    # Establecer el flag para indicar que se mostró la navegación
+    st.session_state[nav_key] = True
     
-    if st.sidebar.button("🎯 Metas", use_container_width=True):
-        navegar_a_pagina("pages/5_Metas.py")
+    # Ocultar solo el menú automático de Streamlit (campo de búsqueda "app" y lista de páginas en texto)
+    # pero mantener nuestros botones personalizados
+    st.markdown("""
+    <style>
+    /* Ocultar el menú de navegación automático de Streamlit (solo la parte superior) */
+    [data-testid="stSidebarNav"] {
+        display: none !important;
+    }
     
-    if st.sidebar.button("⚙️ Configuración", use_container_width=True):
-        navegar_a_pagina("pages/6_Configuracion.py")
+    /* Ocultar cualquier input de búsqueda en el sidebar */
+    section[data-testid="stSidebar"] input[type="search"],
+    section[data-testid="stSidebar"] input[placeholder*="app"],
+    section[data-testid="stSidebar"] input[placeholder*="Search"] {
+        display: none !important;
+    }
+    
+    /* Ocultar la lista de páginas automática (solo texto, no botones) */
+    section[data-testid="stSidebar"] nav,
+    section[data-testid="stSidebar"] ul[role="navigation"],
+    section[data-testid="stSidebar"] div[role="navigation"] {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Botón de inicio en la parte superior
+    if st.sidebar.button("🏠 Página de Inicio", use_container_width=True, type="primary", key="nav_inicio_fin"):
+        st.session_state["mostrar_dashboard"] = None
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    st.sidebar.divider()
+    
+    # Obtener página actual
+    pagina_actual = st.session_state.get("pagina_actual", "dashboard")
+    
+    # Botones de navegación principales con keys únicos
+    if st.sidebar.button("💰 Dashboard", use_container_width=True, type="primary" if pagina_actual == "dashboard" else "secondary", key="nav_dashboard_fin"):
+        st.session_state["pagina_actual"] = "dashboard"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    if st.sidebar.button("🏦 Cuentas", use_container_width=True, type="primary" if pagina_actual == "cuentas" else "secondary", key="nav_cuentas_fin"):
+        st.session_state["pagina_actual"] = "cuentas"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    if st.sidebar.button("💰 Movimientos", use_container_width=True, type="primary" if pagina_actual == "movimientos" else "secondary", key="nav_movimientos_fin"):
+        st.session_state["pagina_actual"] = "movimientos"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    if st.sidebar.button("📊 Reportes", use_container_width=True, type="primary" if pagina_actual == "reportes" else "secondary", key="nav_reportes_fin"):
+        st.session_state["pagina_actual"] = "reportes"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    if st.sidebar.button("💳 Gastos Recurrentes", use_container_width=True, type="primary" if pagina_actual == "gastos_recurrentes" else "secondary", key="nav_gastos_recurrentes_fin"):
+        st.session_state["pagina_actual"] = "gastos_recurrentes"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    if st.sidebar.button("🎯 Metas", use_container_width=True, type="primary" if pagina_actual == "metas" else "secondary", key="nav_metas_fin"):
+        st.session_state["pagina_actual"] = "metas"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+    
+    if st.sidebar.button("⚙️ Configuración", use_container_width=True, type="primary" if pagina_actual == "configuracion" else "secondary", key="nav_configuracion_fin"):
+        st.session_state["pagina_actual"] = "configuracion"
+        # Limpiar flags de navegación para permitir rerun
+        if nav_key in st.session_state:
+            del st.session_state[nav_key]
+        if "nav_lateral_shown_this_run" in st.session_state:
+            del st.session_state["nav_lateral_shown_this_run"]
+        st.rerun()
+
+
+def mostrar_navegacion_lateral_nutricional():
+    """Mostrar navegación lateral para el módulo nutricional"""
+    # Ocultar solo el menú automático de Streamlit (campo de búsqueda "app" y lista de páginas en texto)
+    # pero mantener nuestros botones personalizados
+    st.markdown("""
+    <style>
+    /* Ocultar el menú de navegación automático de Streamlit (solo la parte superior) */
+    [data-testid="stSidebarNav"] {
+        display: none !important;
+    }
+    
+    /* Ocultar cualquier input de búsqueda en el sidebar */
+    section[data-testid="stSidebar"] input[type="search"],
+    section[data-testid="stSidebar"] input[placeholder*="app"],
+    section[data-testid="stSidebar"] input[placeholder*="Search"] {
+        display: none !important;
+    }
+    
+    /* Ocultar la lista de páginas automática (solo texto, no botones) */
+    section[data-testid="stSidebar"] nav,
+    section[data-testid="stSidebar"] ul[role="navigation"],
+    section[data-testid="stSidebar"] div[role="navigation"] {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Botón de inicio en la parte superior
+    if st.sidebar.button("🏠 Página de Inicio", use_container_width=True, type="primary", key="nav_inicio_nut"):
+        st.session_state["mostrar_dashboard"] = None
+        st.rerun()
+    
+    st.sidebar.divider()
+    
+    # Obtener página actual nutricional
+    pagina_actual = st.session_state.get("pagina_nutricional_actual", "dashboard")
+    
+    # Botones de navegación nutricional con keys únicos
+    if st.sidebar.button("🥗 Dashboard Nutricional", use_container_width=True, type="primary" if pagina_actual == "dashboard" else "secondary", key="nav_dashboard_nut"):
+        st.session_state["pagina_nutricional_actual"] = "dashboard"
+        st.session_state["mostrar_dashboard"] = "nutricional"
+        st.rerun()
+    
+    if st.sidebar.button("🍽️ Registro de Comidas", use_container_width=True, type="primary" if pagina_actual == "registro" else "secondary", key="nav_registro_nut"):
+        st.session_state["pagina_nutricional_actual"] = "registro"
+        st.session_state["mostrar_dashboard"] = "nutricional"
+        st.rerun()
+    
+    if st.sidebar.button("🎯 Metas Nutricionales", use_container_width=True, type="primary" if pagina_actual == "metas" else "secondary", key="nav_metas_nut"):
+        st.session_state["pagina_nutricional_actual"] = "metas"
+        st.session_state["mostrar_dashboard"] = "nutricional"
+        st.rerun()
+    
+    if st.sidebar.button("📊 Historial", use_container_width=True, type="primary" if pagina_actual == "historial" else "secondary", key="nav_historial_nut"):
+        st.session_state["pagina_nutricional_actual"] = "historial"
+        st.session_state["mostrar_dashboard"] = "nutricional"
+        st.rerun()
 
 
 def navegar_a_pagina(pagina: str):
@@ -46,230 +219,231 @@ def navegar_a_pagina(pagina: str):
             nombre_pagina = pagina.replace("pages/", "").replace(".py", "")
             url = f"/{nombre_pagina}"
         
-        st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_allow_html=True)
+        st.markdown(f'<meta http-equiv="refresh" content="0; url={url}">', unsafe_html=True)
 
 
 def get_css_styles() -> str:
     """Obtener estilos CSS reutilizables"""
     return """
     <style>
-    /* Solo ocultar la sección superior específica (input y lista) */
-    [data-testid="stSidebar"] > div:first-child > div:first-child {
-        display: none !important;
-    }
-    
-    /* Ocultar solo el input "app new" */
-    [data-testid="stSidebar"] input[placeholder*="app"] {
-        display: none !important;
-    }
-    
-    /* Ocultar solo la lista de navegación automática */
-    [data-testid="stSidebar"] > div:first-child > div:nth-child(2) {
-        display: none !important;
-    }
-    
-    /* Estilos para botones internos (no sidebar) */
-    .stButton > button {
-        background: #242424 !important;
-        color: white !important;
-        border: 1px solid #404040 !important;
-        border-radius: 6px !important;
-        font-weight: 500 !important;
-        transition: all 0.3s ease !important;
-    }
-    .stButton > button:hover {
-        background: #404040 !important;
-        border-color: #606060 !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-    }
-    .stButton > button:active {
-        transform: translateY(0) !important;
-        background: #1a1a1a !important;
-    }
-    .stButton > button:focus {
-        box-shadow: 0 0 0 2px rgba(36, 36, 36, 0.5) !important;
-    }
-    
-    /* Sobrescribir estilos del sidebar */
-    .sidebar .stButton > button {
-        background: linear-gradient(90deg, #00d4aa 0%, #00b894 100%) !important;
-        border: none !important;
-        box-shadow: 0 2px 4px rgba(0, 212, 170, 0.3) !important;
-    }
-    .sidebar .stButton > button:hover {
-        background: linear-gradient(90deg, #00c19a 0%, #00a085 100%) !important;
-        box-shadow: 0 4px 8px rgba(0, 212, 170, 0.4) !important;
-    }
-    .sidebar .stButton > button:focus {
-        box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.5) !important;
-    }
-    
     .main-header {
         text-align: center;
-        padding: 2rem 0;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 10px;
+        padding: 2.5rem 2rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
         margin-bottom: 2rem;
     }
+    
+    .main-header h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+    
+    .main-header p {
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
     .metric-card {
         background: white;
-        padding: 1rem;
         border-radius: 10px;
+        padding: 1.5rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-left: 4px solid #667eea;
-    }
-    .sidebar .sidebar-content {
-        background: #f8f9fa;
-    }
-    .success-message {
-        background: #d4edda;
-        color: #155724;
-        padding: 0.75rem;
-        border-radius: 0.375rem;
-        border: 1px solid #c3e6cb;
-    }
-    .error-message {
-        background: #f8d7da;
-        color: #721c24;
-        padding: 0.75rem;
-        border-radius: 0.375rem;
-        border: 1px solid #f5c6cb;
-    }
-    .warning-message {
-        background: #fff3cd;
-        color: #856404;
-        padding: 0.75rem;
-        border-radius: 0.375rem;
-        border: 1px solid #ffeaa7;
-    }
-    .info-message {
-        background: #d1ecf1;
-        color: #0c5460;
-        padding: 0.75rem;
-        border-radius: 0.375rem;
-        border: 1px solid #bee5eb;
+        margin-bottom: 1rem;
     }
     
-    /* Fix para scroll en móviles - selectores y dropdown */
-    div[data-baseweb="select"] {
-        overflow: visible !important;
-    }
-    div[data-baseweb="popover"] {
-        overflow: auto !important;
-        max-height: 300px !important;
-        -webkit-overflow-scrolling: touch !important;
-    }
-    div[data-baseweb="menu"] {
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important;
-        overscroll-behavior: contain !important;
+    .metric-card h3 {
+        margin: 0 0 0.5rem 0;
+        color: #333;
     }
     
-    /* Fix para radio buttons y otros controles en móviles */
-    @media screen and (max-width: 768px) {
-        div[data-baseweb="select"] {
-            touch-action: pan-y !important;
-        }
-        div[role="listbox"] {
-            -webkit-overflow-scrolling: touch !important;
-            overscroll-behavior: contain !important;
-        }
+    .metric-card .value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    
+    /* Restaurar colores de botones secondary al color de fondo */
+    button[kind="secondary"] {
+        background-color: transparent !important;
+        color: inherit !important;
+        border: 1px solid rgba(250, 250, 250, 0.2) !important;
+    }
+    
+    button[kind="secondary"]:hover {
+        background-color: rgba(250, 250, 250, 0.1) !important;
+        border-color: rgba(250, 250, 250, 0.3) !important;
     }
     </style>
     """
 
 
 def apply_css_styles():
-    """Aplicar estilos CSS al dashboard"""
+    """Aplicar estilos CSS personalizados"""
     st.markdown(get_css_styles(), unsafe_allow_html=True)
 
 
-def show_success_message(message: str):
-    """Mostrar mensaje de éxito"""
-    st.markdown(f"""
-    <div class="success-message">
-        ✅ {message}
-    </div>
-    """, unsafe_allow_html=True)
-
-
 def show_error_message(message: str):
-    """Mostrar mensaje de error"""
-    st.markdown(f"""
-    <div class="error-message">
-        ❌ {message}
-    </div>
-    """, unsafe_allow_html=True)
+    """Mostrar mensaje de error de forma consistente"""
+    st.error(f"❌ {message}")
+
+
+def show_success_message(message: str):
+    """Mostrar mensaje de éxito de forma consistente"""
+    st.success(f"✅ {message}")
 
 
 def show_warning_message(message: str):
-    """Mostrar mensaje de advertencia"""
-    st.markdown(f"""
-    <div class="warning-message">
-        ⚠️ {message}
-    </div>
-    """, unsafe_allow_html=True)
+    """Mostrar mensaje de advertencia de forma consistente"""
+    st.warning(f"⚠️ {message}")
 
 
 def show_info_message(message: str):
-    """Mostrar mensaje informativo"""
-    st.markdown(f"""
-    <div class="info-message">
-        ℹ️ {message}
-    </div>
-    """, unsafe_allow_html=True)
+    """Mostrar mensaje informativo de forma consistente"""
+    st.info(f"ℹ️ {message}")
 
 
-def show_fullscreen_loading(message: str = "Cargando..."):
-    """Mostrar loading de pantalla completa que bloquea interacciones"""
-    with st.spinner(message):
-        st.markdown(f"""
-        <div style="
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            flex-direction: column;
-        ">
-            <div style="
-                background: white;
-                padding: 2rem;
-                border-radius: 15px;
-                text-align: center;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-                border: 1px solid #e0e0e0;
-            ">
-                <div style="
-                    width: 50px;
-                    height: 50px;
-                    border: 5px solid #f3f3f3;
-                    border-top: 5px solid #3498db;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin: 0 auto 1.5rem;
-                "></div>
-                <p style="margin: 0; font-size: 1.2rem; color: #333; font-weight: 500;">{message}</p>
-                <p style="margin: 0.5rem 0 0; font-size: 0.9rem; color: #666;">Por favor espera...</p>
-            </div>
-        </div>
-        
-        <style>
-            @keyframes spin {{
-                0% {{ transform: rotate(0deg); }}
-                100% {{ transform: rotate(360deg); }}
-            }}
-        </style>
-        """, unsafe_allow_html=True)
+def format_currency(amount: float, currency: str = "$") -> str:
+    """Formatear cantidad como moneda"""
+    return f"{currency}{amount:,.2f}"
 
 
-def hide_fullscreen_loading():
-    """Ocultar loading de pantalla completa"""
-    pass
+def format_percentage(value: float, decimals: int = 2) -> str:
+    """Formatear valor como porcentaje"""
+    return f"{value:.{decimals}f}%"
+
+
+def format_date(date_obj: date, format_str: str = "%d/%m/%Y") -> str:
+    """Formatear fecha"""
+    return date_obj.strftime(format_str)
+
+
+def format_datetime(datetime_obj: datetime, format_str: str = "%d/%m/%Y %H:%M") -> str:
+    """Formatear fecha y hora"""
+    return datetime_obj.strftime(format_str)
+
+
+def get_month_name(month: int) -> str:
+    """Obtener nombre del mes"""
+    months = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ]
+    return months[month - 1] if 1 <= month <= 12 else ""
+
+
+def validate_email(email: str) -> bool:
+    """Validar formato de email"""
+    import re
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(pattern, email))
+
+
+def validate_phone(phone: str) -> bool:
+    """Validar formato de teléfono"""
+    import re
+    pattern = r'^\+?1?\d{9,15}$'
+    return bool(re.match(pattern, phone))
+
+
+def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> float:
+    """Dividir de forma segura evitando división por cero"""
+    return numerator / denominator if denominator != 0 else default
+
+
+def calculate_percentage(part: float, total: float) -> float:
+    """Calcular porcentaje"""
+    return safe_divide(part, total, 0.0) * 100
+
+
+def truncate_text(text: str, max_length: int = 50, suffix: str = "...") -> str:
+    """Truncar texto a una longitud máxima"""
+    if len(text) <= max_length:
+        return text
+    return text[:max_length - len(suffix)] + suffix
+
+
+def group_by_key(items: List[Dict], key: str) -> Dict[Any, List[Dict]]:
+    """Agrupar items por una clave"""
+    grouped = {}
+    for item in items:
+        group_key = item.get(key)
+        if group_key not in grouped:
+            grouped[group_key] = []
+        grouped[group_key].append(item)
+    return grouped
+
+
+def sort_dict_by_value(d: Dict, reverse: bool = True) -> List[tuple]:
+    """Ordenar diccionario por valor"""
+    return sorted(d.items(), key=lambda x: x[1], reverse=reverse)
+
+
+def get_top_items(items: List[Dict], key: str, top_n: int = 5) -> List[Dict]:
+    """Obtener los top N items ordenados por una clave"""
+    sorted_items = sorted(items, key=lambda x: x.get(key, 0), reverse=True)
+    return sorted_items[:top_n]
+
+
+def filter_by_date_range(items: List[Dict], date_key: str, start_date: date, end_date: date) -> List[Dict]:
+    """Filtrar items por rango de fechas"""
+    filtered = []
+    for item in items:
+        item_date = item.get(date_key)
+        if isinstance(item_date, str):
+            item_date = datetime.fromisoformat(item_date).date()
+        if start_date <= item_date <= end_date:
+            filtered.append(item)
+    return filtered
+
+
+def calculate_sum(items: List[Dict], key: str) -> float:
+    """Calcular suma de valores en una lista de diccionarios"""
+    return sum(item.get(key, 0) for item in items)
+
+
+def calculate_average(items: List[Dict], key: str) -> float:
+    """Calcular promedio de valores en una lista de diccionarios"""
+    if not items:
+        return 0.0
+    total = calculate_sum(items, key)
+    return total / len(items)
+
+
+def get_unique_values(items: List[Dict], key: str) -> List[Any]:
+    """Obtener valores únicos de una clave en una lista de diccionarios"""
+    return list(set(item.get(key) for item in items if key in item))
+
+
+def merge_dicts(*dicts: Dict) -> Dict:
+    """Fusionar múltiples diccionarios"""
+    merged = {}
+    for d in dicts:
+        merged.update(d)
+    return merged
+
+
+def deep_copy_dict(d: Dict) -> Dict:
+    """Crear copia profunda de un diccionario"""
+    import copy
+    return copy.deepcopy(d)
+
+
+def remove_none_values(d: Dict) -> Dict:
+    """Remover valores None de un diccionario"""
+    return {k: v for k, v in d.items() if v is not None}
+
+
+def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
+    """Aplanar diccionario anidado"""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)

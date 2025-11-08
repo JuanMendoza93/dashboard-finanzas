@@ -4,9 +4,13 @@ from datetime import datetime
 import requests
 import streamlit as st
 from config.firebase_config import firebase_config
+from utils.firebase_namespace import get_financial_path, get_nutrition_path, is_migrated
 
 # Configurar Firebase REST API
 FIREBASE_URL = f"https://{firebase_config['projectId']}-default-rtdb.firebaseio.com"
+
+# Flag para usar namespace (se activa después de migración)
+USE_NAMESPACE = None  # Se detecta automáticamente
 
 # Base de datos local para desarrollo (fallback)
 DATA_FILE = "data.json"
@@ -54,23 +58,54 @@ def _firebase_get_cached(url: str):
         print(f"[ERROR] Error Firebase GET: {e}")
         return {}
 
+def _resolve_path(path: str) -> str:
+    """
+    Resolver path con namespace si es necesario
+    
+    Args:
+        path: Path original (ej: "movimientos" o "financiero/movimientos")
+    
+    Returns:
+        Path resuelto con namespace si aplica
+    """
+    global USE_NAMESPACE
+    
+    # Si el path ya incluye namespace, usarlo tal cual
+    if "/" in path and path.split("/")[0] in ["financiero", "nutricional"]:
+        return path
+    
+    # Detectar si se debe usar namespace (solo una vez)
+    if USE_NAMESPACE is None:
+        USE_NAMESPACE = is_migrated()
+    
+    # Si no está migrado, usar path original
+    if not USE_NAMESPACE:
+        return path
+    
+    # Si está migrado, agregar namespace financiero por defecto
+    # (asumiendo que es una colección financiera)
+    return get_financial_path(path)
+
+
 def firebase_get(path=""):
-    """Obtener datos de Firebase (con caché)"""
+    """Obtener datos de Firebase (con caché y namespace automático)"""
     try:
-        url = f"{FIREBASE_URL}/{path}.json"
+        resolved_path = _resolve_path(path)
+        url = f"{FIREBASE_URL}/{resolved_path}.json"
         return _firebase_get_cached(url)
     except Exception as e:
         print(f"[ERROR] Error Firebase GET: {e}")
         return {}
 
 def firebase_set(path, data):
-    """Guardar datos en Firebase (invalida caché)"""
+    """Guardar datos en Firebase (invalida caché y usa namespace automático)"""
     try:
-        url = f"{FIREBASE_URL}/{path}.json"
+        resolved_path = _resolve_path(path)
+        url = f"{FIREBASE_URL}/{resolved_path}.json"
         response = requests.put(url, json=data, timeout=10)
         if response.status_code == 200:
             # Invalidar caché relacionado
-            _invalidate_cache_for_path(path)
+            _invalidate_cache_for_path(resolved_path)
             return True
         return False
     except Exception as e:
@@ -78,9 +113,10 @@ def firebase_set(path, data):
         return False
 
 def firebase_push(path, data):
-    """Agregar datos a Firebase (invalida caché)"""
+    """Agregar datos a Firebase (invalida caché y usa namespace automático)"""
     try:
-        url = f"{FIREBASE_URL}/{path}.json"
+        resolved_path = _resolve_path(path)
+        url = f"{FIREBASE_URL}/{resolved_path}.json"
         print(f"[PUSH] Firebase PUSH: {url}")
         print(f"[DATA] Data: {data}")
         response = requests.post(url, json=data, timeout=10)
@@ -89,7 +125,7 @@ def firebase_push(path, data):
             result = response.json()
             print(f"[OK] Firebase PUSH Success: {result}")
             # Invalidar caché relacionado
-            _invalidate_cache_for_path(path)
+            _invalidate_cache_for_path(resolved_path)
             return result
         return None
     except Exception as e:
@@ -97,13 +133,14 @@ def firebase_push(path, data):
         return None
 
 def firebase_delete(path):
-    """Eliminar datos de Firebase (invalida caché)"""
+    """Eliminar datos de Firebase (invalida caché y usa namespace automático)"""
     try:
-        url = f"{FIREBASE_URL}/{path}.json"
+        resolved_path = _resolve_path(path)
+        url = f"{FIREBASE_URL}/{resolved_path}.json"
         response = requests.delete(url, timeout=10)
         if response.status_code == 200:
             # Invalidar caché relacionado
-            _invalidate_cache_for_path(path)
+            _invalidate_cache_for_path(resolved_path)
             return True
         return False
     except Exception as e:
@@ -182,8 +219,10 @@ def eliminar_cuenta(cuenta_id):
     save_data(data)
 
 def cargar_configuracion():
+    """Cargar configuración desde Firebase (usando namespace financiero)"""
     try:
-        config_data = firebase_get("configuracion")
+        # Usar path con namespace financiero
+        config_data = firebase_get(get_financial_path("configuracion"))
         if config_data:
             return config_data
         else:
@@ -192,7 +231,7 @@ def cargar_configuracion():
                 "categorias": ["Comida", "Transporte", "Vivienda", "Entretenimiento", "Salud", "Educación", "Otros"],
                 "tipos_gasto": ["Necesario", "Innecesario", "Emergencia", "Lujo"]
             }
-            firebase_set("configuracion", config_default)
+            firebase_set(get_financial_path("configuracion"), config_default)
             return config_default
     except Exception as e:
         print(f"Error cargando configuración: {e}")
@@ -226,7 +265,7 @@ def guardar_configuracion(configuracion):
         configuracion["categorias"] = categorias_normalizadas
         configuracion["tipos_gasto"] = tipos_normalizados
         
-        return firebase_set("configuracion", configuracion)
+        return firebase_set(get_financial_path("configuracion"), configuracion)
     except Exception as e:
         print(f"Error guardando configuración: {e}")
         return False
@@ -295,7 +334,8 @@ def agregar_tipo_gasto(nuevo_tipo):
 
 def cargar_gastos_recurrentes():
     try:
-        gastos_data = firebase_get("gastos_recurrentes")
+        # Usar get_financial_path para apuntar a la nueva estructura
+        gastos_data = firebase_get(get_financial_path("gastos_recurrentes"))
         if gastos_data:
             return gastos_data
         else:
@@ -311,7 +351,8 @@ def guardar_gasto_recurrente(gasto):
         new_id = str(len(gastos_actuales) + 1)
         gasto['id'] = new_id
         gastos_actuales.append(gasto)
-        if firebase_set("gastos_recurrentes", gastos_actuales):
+        # Usar get_financial_path para apuntar a la nueva estructura
+        if firebase_set(get_financial_path("gastos_recurrentes"), gastos_actuales):
             return gasto
         return None
     except Exception as e:
@@ -322,7 +363,8 @@ def eliminar_gasto_recurrente(gasto_id):
     try:
         gastos_actuales = cargar_gastos_recurrentes()
         gastos_actuales = [g for g in gastos_actuales if g["id"] != gasto_id]
-        return firebase_set("gastos_recurrentes", gastos_actuales)
+        # Usar get_financial_path para apuntar a la nueva estructura
+        return firebase_set(get_financial_path("gastos_recurrentes"), gastos_actuales)
     except Exception as e:
         print(f"Error eliminando gasto recurrente: {e}")
         return False
@@ -334,7 +376,8 @@ def actualizar_gasto_recurrente(gasto_id, datos_actualizados):
         for i, gasto in enumerate(gastos_actuales):
             if gasto["id"] == gasto_id:
                 gastos_actuales[i].update(datos_actualizados)
-                return firebase_set("gastos_recurrentes", gastos_actuales)
+                # Usar get_financial_path para apuntar a la nueva estructura
+                return firebase_set(get_financial_path("gastos_recurrentes"), gastos_actuales)
         return False
     except Exception as e:
         print(f"Error actualizando gasto recurrente: {e}")
@@ -343,8 +386,8 @@ def actualizar_gasto_recurrente(gasto_id, datos_actualizados):
 def actualizar_cuenta(cuenta_id, datos_actualizados):
     """Actualizar una cuenta en Firebase"""
     try:
-        # Actualizar en Firebase
-        firebase_set(f"cuentas/{cuenta_id}", datos_actualizados)
+        # Actualizar en Firebase usando la nueva estructura
+        firebase_set(f"{get_financial_path('cuentas')}/{cuenta_id}", datos_actualizados)
         return True
     except:
         # Fallback a datos locales
@@ -359,15 +402,15 @@ def actualizar_cuenta(cuenta_id, datos_actualizados):
 def agregar_dinero_cuenta(cuenta_id, monto):
     """Agregar dinero a una cuenta específica"""
     try:
-        # Obtener datos actuales de la cuenta
-        cuenta_data = firebase_get(f"cuentas/{cuenta_id}")
+        # Obtener datos actuales de la cuenta usando la nueva estructura
+        cuenta_data = firebase_get(f"{get_financial_path('cuentas')}/{cuenta_id}")
         if cuenta_data:
             nuevo_saldo = float(cuenta_data.get("saldo", 0)) + monto
             datos_actualizados = {
                 "nombre": cuenta_data.get("nombre", ""),
                 "saldo": nuevo_saldo
             }
-            firebase_set(f"cuentas/{cuenta_id}", datos_actualizados)
+            firebase_set(f"{get_financial_path('cuentas')}/{cuenta_id}", datos_actualizados)
             return True
     except:
         # Fallback a datos locales
@@ -384,8 +427,8 @@ def agregar_dinero_cuenta(cuenta_id, monto):
 def cargar_metas():
     """Cargar metas de ahorro"""
     try:
-        # Intentar cargar desde Firebase
-        metas = firebase_get("metas")
+        # Intentar cargar desde Firebase usando la nueva estructura
+        metas = firebase_get(get_financial_path("metas"))
         if metas:
             return metas
         
@@ -400,8 +443,8 @@ def cargar_metas():
 def guardar_metas(metas):
     """Guardar metas de ahorro"""
     try:
-        # Intentar guardar en Firebase
-        if firebase_set("metas", metas):
+        # Intentar guardar en Firebase usando la nueva estructura
+        if firebase_set(get_financial_path("metas"), metas):
             return True
         
         # Fallback a datos locales
@@ -417,21 +460,41 @@ def guardar_metas(metas):
 def _invalidate_cache_for_path(path: str):
     """Invalidar caché basado en el path de Firebase"""
     try:
-        # Mapear paths de Firebase a claves de caché
-        path_mappings = {
-            'movimientos': 'movimientos',
-            'cuentas': 'cuentas',
-            'configuracion': 'configuracion',
-            'gastos_recurrentes': 'gastos_recurrentes',
-            'metas': 'metas',
-            'reportes_mensuales': 'reportes_mensuales',
+        # Extraer el nombre de la colección del path (puede tener namespace)
+        # Ejemplos: "financiero/cuentas" -> "cuentas", "cuentas" -> "cuentas"
+        path_parts = path.split("/")
+        collection_name = path_parts[-1] if len(path_parts) > 1 else path_parts[0]
+        
+        # Si el path tiene namespace, extraer solo el nombre de la colección
+        if len(path_parts) > 1 and path_parts[0] in ["financiero", "nutricional"]:
+            collection_name = path_parts[1]
+        
+        # Mapear colecciones a funciones de caché específicas
+        cache_functions = {
+            'movimientos': [
+                'services.movimiento_service.MovimientoService._obtener_todos_cached',
+            ],
+            'cuentas': [
+                'services.cuenta_service.CuentaService._obtener_todas_cached',
+            ],
+            'configuracion': [
+                'utils.database._firebase_get_cached',
+            ],
+            'gastos_recurrentes': [
+                'utils.database._firebase_get_cached',
+            ],
+            'metas': [
+                'utils.database._firebase_get_cached',
+            ],
+            'reportes_mensuales': [
+                'services.reporte_service.ReporteService.obtener_reportes_mensuales',
+            ],
         }
         
-        # Determinar qué caché invalidar basado en el path
-        for key, cache_key in path_mappings.items():
-            if path.startswith(key):
-                # Limpiar caché de Streamlit
-                st.cache_data.clear()
-                break
+        # Limpiar caché específico si existe
+        if collection_name in cache_functions:
+            # Limpiar todo el caché de Streamlit para asegurar que se actualice
+            st.cache_data.clear()
+            print(f"[CACHE] Invalidado caché para: {collection_name}")
     except Exception as e:
         print(f"Error invalidando caché: {e}")
