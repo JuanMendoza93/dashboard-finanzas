@@ -250,35 +250,47 @@ def main():
     # Aplicar CSS personalizado desde configuraciones
     apply_css_styles()
     
-    # No mostrar navegación lateral aquí - cada página la mostrará cuando sea necesario
-    # para evitar duplicados y problemas de navegación
+    # Obtener página actual PRIMERO
+    pagina_actual = st.session_state.get("pagina_actual", "dashboard")
     
-    # No mostrar selector de dashboard, solo el dashboard financiero
+    # Limpiar flag de navegación al inicio para asegurar que los botones siempre se muestren
+    # Esto es necesario porque el flag puede estar establecido desde una ejecución anterior
+    if "nav_financiera_shown_this_run" in st.session_state:
+        del st.session_state["nav_financiera_shown_this_run"]
     
-    # Dashboard financiero (código existente)
-    # Header principal (solo para dashboard financiero)
-    if st.session_state.get("pagina_actual", "dashboard") == "dashboard":
+    # Mostrar navegación lateral SIEMPRE PRIMERO (antes de cargar cualquier página)
+    # Esto asegura que el menú lateral esté visible en todo momento y funcione correctamente
+    from utils.helpers import mostrar_navegacion_lateral_financiera
+    mostrar_navegacion_lateral_financiera()
+    
+    # Solo cargar datos del dashboard si estamos en la página del dashboard
+    if pagina_actual == "dashboard":
+        # Header principal del dashboard financiero
         st.markdown("""
         <div class="main-header">
             <h1>💰 Dashboard Financiero</h1>
             <p>Gestiona tus finanzas de manera inteligente</p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # Cargar datos sin loading que se atasca
-    try:
-        resumen = ReporteService.generar_resumen_financiero()
-        configuracion = cargar_configuracion()
         
-        # Sincronizar configuraciones con Firebase si es necesario
-        if not config_manager.sync_with_firebase():
-            st.warning("⚠️ No se pudo sincronizar con Firebase. Usando configuración local.")
-    except Exception as e:
-        show_error_message(f"Error cargando datos: {e}")
-        return
-    
-    # Solo mostrar dashboard si está seleccionado
-    if st.session_state.get("pagina_actual", "dashboard") == "dashboard":
+        # Cargar datos del dashboard (solo cuando es necesario)
+        try:
+            resumen = ReporteService.generar_resumen_financiero()
+            configuracion = cargar_configuracion()
+            
+            # Sincronizar configuraciones con Firebase si es necesario (sin bloquear)
+            try:
+                if not config_manager.sync_with_firebase():
+                    st.warning("⚠️ No se pudo sincronizar con Firebase. Usando configuración local.")
+            except Exception as sync_error:
+                # Si falla la sincronización, continuar sin bloquear
+                print(f"Error sincronizando con Firebase: {sync_error}")
+        except Exception as e:
+            show_error_message(f"Error cargando datos: {e}")
+            st.info("💡 Intenta recargar la página o verifica tu conexión.")
+            return
+        
+        # Mostrar dashboard
         # Métricas principales (saldo total con validación de colores, gastos del mes y ahorro del mes)
         col1, col2, col3 = st.columns(3)
         
@@ -423,20 +435,7 @@ def main():
         
         st.divider()
     
-    # Obtener página actual
-    pagina_actual = st.session_state.get("pagina_actual", "dashboard")
-    
-    # Limpiar flag de navegación al inicio para asegurar que los botones siempre se muestren
-    # Esto es necesario porque el flag puede estar establecido desde una ejecución anterior
-    if "nav_financiera_shown_this_run" in st.session_state:
-        del st.session_state["nav_financiera_shown_this_run"]
-    
-    # Mostrar navegación lateral SIEMPRE (antes de cargar cualquier página)
-    # Esto asegura que el menú lateral esté visible en todo momento
-    # Las páginas individuales también la mostrarán, pero el flag evitará duplicados
-    from utils.helpers import mostrar_navegacion_lateral_financiera
-    mostrar_navegacion_lateral_financiera()
-    
+    # Navegar a la página correspondiente
     if pagina_actual == "dashboard":
         # Dashboard principal (ya se muestra arriba)
         pass
