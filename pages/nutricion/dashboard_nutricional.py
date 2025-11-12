@@ -32,6 +32,12 @@ def main():
     
     # Obtener datos del día actual
     hoy = date.today()
+    
+    # Limpiar caché si es necesario para asegurar datos actualizados
+    if "ultima_fecha_dashboard" not in st.session_state or st.session_state["ultima_fecha_dashboard"] != hoy:
+        RegistroNutricionalService._obtener_por_fecha_cached.clear()
+        st.session_state["ultima_fecha_dashboard"] = hoy
+    
     registro_hoy = RegistroNutricionalService.obtener_por_fecha(hoy)
     meta_actual = MetaCaloricaService.obtener_meta_actual()
     

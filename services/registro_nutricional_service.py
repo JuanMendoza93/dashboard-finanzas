@@ -79,18 +79,31 @@ class RegistroNutricionalService:
     def agregar_comida(fecha: date, comida: Dict[str, Any]) -> bool:
         """Agregar una comida al registro del día"""
         try:
+            # Limpiar caché antes de obtener el registro para asegurar datos actualizados
+            RegistroNutricionalService._obtener_por_fecha_cached.clear()
+            
             registro = RegistroNutricionalService.obtener_por_fecha(fecha)
             
             if registro:
                 # Agregar a comidas existentes
                 registro.comidas.append(comida)
+                comidas_actualizadas = registro.comidas
             else:
                 # Crear nuevo registro
-                registro = RegistroDiario(fecha=fecha, comidas=[comida])
+                comidas_actualizadas = [comida]
             
-            return RegistroNutricionalService.crear_o_actualizar(fecha, registro.comidas)
+            # Guardar y limpiar caché
+            result = RegistroNutricionalService.crear_o_actualizar(fecha, comidas_actualizadas)
+            
+            # Limpiar caché después de guardar para asegurar que se obtenga el registro actualizado
+            if result:
+                RegistroNutricionalService._obtener_por_fecha_cached.clear()
+            
+            return result
         except Exception as e:
             print(f"Error agregando comida al registro del {fecha}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     @staticmethod

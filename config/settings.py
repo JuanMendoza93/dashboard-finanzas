@@ -300,7 +300,7 @@ class UIConfig:
             "use_container_width": True
         },
         "danger": {
-            "type": "secondary",
+            "type": "primary",
             "use_container_width": True
         }
     }

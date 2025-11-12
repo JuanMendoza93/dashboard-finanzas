@@ -38,6 +38,10 @@ Thumbs.db
 # Streamlit
 .streamlit/secrets.toml
 
+# Environment variables
+.env
+.env.local
+
 # Firebase
 firebase-service-account.json
 *.json.bak
