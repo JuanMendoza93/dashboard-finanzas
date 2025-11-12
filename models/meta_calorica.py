@@ -7,11 +7,11 @@ from datetime import datetime, date
 
 
 class MetaCalorica:
-    """Modelo de meta calórica diaria"""
+    """Modelo de meta calórica semanal"""
     
     def __init__(
         self,
-        calorias_diarias: float,
+        calorias_semanales: float,
         deficit_calorico: float = 0.0,
         proteinas_objetivo: float = 0.0,
         carbohidratos_objetivo: float = 0.0,
@@ -21,7 +21,7 @@ class MetaCalorica:
         meta_id: Optional[str] = None
     ):
         self.id = meta_id
-        self.calorias_diarias = calorias_diarias
+        self.calorias_semanales = calorias_semanales
         self.deficit_calorico = deficit_calorico
         self.proteinas_objetivo = proteinas_objetivo
         self.carbohidratos_objetivo = carbohidratos_objetivo
@@ -31,13 +31,25 @@ class MetaCalorica:
     
     @property
     def calorias_objetivo(self) -> float:
-        """Calorías objetivo considerando déficit"""
-        return self.calorias_diarias - self.deficit_calorico
+        """Calorías objetivo diarias considerando déficit (semanal / 7)"""
+        return (self.calorias_semanales - self.deficit_calorico) / 7
+    
+    @property
+    def calorias_objetivo_semanal(self) -> float:
+        """Calorías objetivo semanales considerando déficit"""
+        return self.calorias_semanales - self.deficit_calorico
+    
+    # Mantener compatibilidad con código antiguo
+    @property
+    def calorias_diarias(self) -> float:
+        """Calorías diarias (calculadas desde semanal)"""
+        return self.calorias_semanales / 7
     
     def to_dict(self) -> Dict[str, Any]:
         """Convertir a diccionario para Firebase"""
         return {
-            "calorias_diarias": self.calorias_diarias,
+            "calorias_semanales": self.calorias_semanales,
+            "calorias_diarias": self.calorias_diarias,  # Para compatibilidad
             "deficit_calorico": self.deficit_calorico,
             "proteinas_objetivo": self.proteinas_objetivo,
             "carbohidratos_objetivo": self.carbohidratos_objetivo,
@@ -57,9 +69,15 @@ class MetaCalorica:
         if fecha_fin and isinstance(fecha_fin, str):
             fecha_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
         
+        # Compatibilidad: si tiene calorias_diarias, convertir a semanal
+        calorias_semanales = data.get("calorias_semanales")
+        if not calorias_semanales:
+            calorias_diarias = data.get("calorias_diarias", 2000.0)
+            calorias_semanales = calorias_diarias * 7
+        
         return cls(
             meta_id=meta_id or data.get("id"),
-            calorias_diarias=data.get("calorias_diarias", 2000.0),
+            calorias_semanales=calorias_semanales,
             deficit_calorico=data.get("deficit_calorico", 0.0),
             proteinas_objetivo=data.get("proteinas_objetivo", 0.0),
             carbohidratos_objetivo=data.get("carbohidratos_objetivo", 0.0),

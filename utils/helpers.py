@@ -13,17 +13,16 @@ def mostrar_navegacion_lateral():
     mostrar_dashboard = st.session_state.get("mostrar_dashboard")
     
     # Verificar si ya se mostró la navegación en esta ejecución para evitar duplicados
-    # Solo verificar si se llama desde una página individual cuando ya se mostró desde Home.py
+    # Solo verificar si se llama desde una página individual cuando ya se mostró desde app.py/Home.py
     nav_key = "nav_lateral_shown_this_run"
     
-    # Si el flag está explícitamente en False, significa que se reseteó para un rerun
-    # En ese caso, permitir que se muestre la navegación
-    if st.session_state.get(nav_key) == False:
-        st.session_state[nav_key] = True  # Marcar como mostrado
-    elif st.session_state.get(nav_key, False):
+    # Si el flag está en True, significa que ya se mostró en esta ejecución
+    # En ese caso, no mostrar de nuevo para evitar duplicados
+    if st.session_state.get(nav_key, False) == True:
         return  # Ya se mostró en esta ejecución, evitar duplicados
-    else:
-        st.session_state[nav_key] = True  # Primera vez, marcar como mostrado
+    
+    # Marcar como mostrado
+    st.session_state[nav_key] = True
     
     if mostrar_dashboard == "nutricional":
         mostrar_navegacion_lateral_nutricional()
@@ -89,7 +88,7 @@ def mostrar_navegacion_lateral_financiera():
     pagina_actual = st.session_state.get("pagina_actual", "dashboard")
     
     # Botones de navegación principales con keys únicos
-    if st.sidebar.button("💰 Dashboard", use_container_width=True, type="primary" if pagina_actual == "dashboard" else "primary", key="nav_dashboard_fin"):
+    if st.sidebar.button("💰 Dashboard", use_container_width=True, type="tertiary" if pagina_actual == "dashboard" else "primary", key="nav_dashboard_fin"):
         st.session_state["pagina_actual"] = "dashboard"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -98,7 +97,7 @@ def mostrar_navegacion_lateral_financiera():
             del st.session_state["nav_lateral_shown_this_run"]
         st.rerun()
     
-    if st.sidebar.button("🏦 Cuentas", use_container_width=True, type="primary" if pagina_actual == "cuentas" else "primary", key="nav_cuentas_fin"):
+    if st.sidebar.button("🏦 Cuentas", use_container_width=True, type="tertiary" if pagina_actual == "cuentas" else "primary", key="nav_cuentas_fin"):
         st.session_state["pagina_actual"] = "cuentas"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -107,7 +106,7 @@ def mostrar_navegacion_lateral_financiera():
             del st.session_state["nav_lateral_shown_this_run"]
         st.rerun()
     
-    if st.sidebar.button("💰 Movimientos", use_container_width=True, type="primary" if pagina_actual == "movimientos" else "primary", key="nav_movimientos_fin"):
+    if st.sidebar.button("💰 Movimientos", use_container_width=True, type="tertiary" if pagina_actual == "movimientos" else "primary", key="nav_movimientos_fin"):
         st.session_state["pagina_actual"] = "movimientos"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -116,7 +115,7 @@ def mostrar_navegacion_lateral_financiera():
             del st.session_state["nav_lateral_shown_this_run"]
         st.rerun()
     
-    if st.sidebar.button("📊 Reportes", use_container_width=True, type="primary" if pagina_actual == "reportes" else "primary", key="nav_reportes_fin"):
+    if st.sidebar.button("📊 Reportes", use_container_width=True, type="tertiary" if pagina_actual == "reportes" else "primary", key="nav_reportes_fin"):
         st.session_state["pagina_actual"] = "reportes"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -125,7 +124,7 @@ def mostrar_navegacion_lateral_financiera():
             del st.session_state["nav_lateral_shown_this_run"]
         st.rerun()
     
-    if st.sidebar.button("💳 Gastos Recurrentes", use_container_width=True, type="primary" if pagina_actual == "gastos_recurrentes" else "primary", key="nav_gastos_recurrentes_fin"):
+    if st.sidebar.button("💳 Gastos Recurrentes", use_container_width=True, type="tertiary" if pagina_actual == "gastos_recurrentes" else "primary", key="nav_gastos_recurrentes_fin"):
         st.session_state["pagina_actual"] = "gastos_recurrentes"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -134,7 +133,7 @@ def mostrar_navegacion_lateral_financiera():
             del st.session_state["nav_lateral_shown_this_run"]
         st.rerun()
     
-    if st.sidebar.button("🎯 Metas", use_container_width=True, type="primary" if pagina_actual == "metas" else "primary", key="nav_metas_fin"):
+    if st.sidebar.button("🎯 Metas", use_container_width=True, type="tertiary" if pagina_actual == "metas" else "primary", key="nav_metas_fin"):
         st.session_state["pagina_actual"] = "metas"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -143,7 +142,7 @@ def mostrar_navegacion_lateral_financiera():
             del st.session_state["nav_lateral_shown_this_run"]
         st.rerun()
     
-    if st.sidebar.button("⚙️ Configuración", use_container_width=True, type="primary" if pagina_actual == "configuracion" else "primary", key="nav_configuracion_fin"):
+    if st.sidebar.button("⚙️ Configuración", use_container_width=True, type="tertiary" if pagina_actual == "configuracion" else "primary", key="nav_configuracion_fin"):
         st.session_state["pagina_actual"] = "configuracion"
         # Limpiar flags de navegación para permitir rerun
         if nav_key in st.session_state:
@@ -159,13 +158,11 @@ def mostrar_navegacion_lateral_nutricional():
     # Este flag previene que se muestre dos veces cuando se llama desde app.py y desde páginas individuales
     nav_key = "nav_nutricional_shown_this_run"
     
-    # Solo verificar el flag si se llama desde una página individual (no desde app.py)
-    # Si se llama desde app.py, siempre mostrar los botones
-    # Detectar si se llama desde una página individual verificando si ya se mostró desde app.py
-    if st.session_state.get(nav_key, False):
-        # Si el flag está establecido, significa que ya se mostró desde app.py
-        # En este caso, no mostrar de nuevo para evitar duplicados
-        return  # Ya se mostró en esta ejecución, evitar duplicados
+    # Si el flag está explícitamente en False o no existe, significa que podemos mostrar la navegación
+    # Si está en True, significa que ya se mostró en esta ejecución, así que no mostrar de nuevo
+    if st.session_state.get(nav_key, False) == True:
+        # Ya se mostró en esta ejecución, evitar duplicados
+        return
     
     # Establecer el flag para indicar que se mostró la navegación
     st.session_state[nav_key] = True
@@ -198,11 +195,10 @@ def mostrar_navegacion_lateral_nutricional():
     # Botón de inicio en la parte superior
     if st.sidebar.button("🏠 Página de Inicio", use_container_width=True, type="primary", key="nav_inicio_nut"):
         st.session_state["mostrar_dashboard"] = None
-        # Limpiar flags de navegación para permitir rerun
-        if nav_key in st.session_state:
-            del st.session_state[nav_key]
+        # Resetear flags de navegación para permitir rerun
+        st.session_state[nav_key] = False
         if "nav_lateral_shown_this_run" in st.session_state:
-            del st.session_state["nav_lateral_shown_this_run"]
+            st.session_state["nav_lateral_shown_this_run"] = False
         st.rerun()
     
     st.sidebar.divider()
@@ -211,44 +207,49 @@ def mostrar_navegacion_lateral_nutricional():
     pagina_actual = st.session_state.get("pagina_nutricional_actual", "dashboard")
     
     # Botones de navegación nutricional con keys únicos
-    if st.sidebar.button("🥗 Dashboard Nutricional", use_container_width=True, type="primary" if pagina_actual == "dashboard" else "secondary", key="nav_dashboard_nut"):
+    if st.sidebar.button("🥗 Dashboard Nutricional", use_container_width=True, type="tertiary" if pagina_actual == "dashboard" else "primary", key="nav_dashboard_nut"):
         st.session_state["pagina_nutricional_actual"] = "dashboard"
         st.session_state["mostrar_dashboard"] = "nutricional"
-        # Limpiar flags de navegación para permitir rerun
-        if nav_key in st.session_state:
-            del st.session_state[nav_key]
+        # Resetear flags de navegación para permitir rerun
+        st.session_state[nav_key] = False
         if "nav_lateral_shown_this_run" in st.session_state:
-            del st.session_state["nav_lateral_shown_this_run"]
+            st.session_state["nav_lateral_shown_this_run"] = False
         st.rerun()
     
-    if st.sidebar.button("🍽️ Registro de Comidas", use_container_width=True, type="primary" if pagina_actual == "registro" else "secondary", key="nav_registro_nut"):
+    if st.sidebar.button("🍽️ Registro de Comidas", use_container_width=True, type="tertiary" if pagina_actual == "registro" else "primary", key="nav_registro_nut"):
         st.session_state["pagina_nutricional_actual"] = "registro"
         st.session_state["mostrar_dashboard"] = "nutricional"
-        # Limpiar flags de navegación para permitir rerun
-        if nav_key in st.session_state:
-            del st.session_state[nav_key]
+        # Resetear flags de navegación para permitir rerun
+        st.session_state[nav_key] = False
         if "nav_lateral_shown_this_run" in st.session_state:
-            del st.session_state["nav_lateral_shown_this_run"]
+            st.session_state["nav_lateral_shown_this_run"] = False
         st.rerun()
     
-    if st.sidebar.button("🎯 Metas Nutricionales", use_container_width=True, type="primary" if pagina_actual == "metas" else "secondary", key="nav_metas_nut"):
+    if st.sidebar.button("🎯 Metas Nutricionales", use_container_width=True, type="tertiary" if pagina_actual == "metas" else "primary", key="nav_metas_nut"):
         st.session_state["pagina_nutricional_actual"] = "metas"
         st.session_state["mostrar_dashboard"] = "nutricional"
-        # Limpiar flags de navegación para permitir rerun
-        if nav_key in st.session_state:
-            del st.session_state[nav_key]
+        # Resetear flags de navegación para permitir rerun
+        st.session_state[nav_key] = False
         if "nav_lateral_shown_this_run" in st.session_state:
-            del st.session_state["nav_lateral_shown_this_run"]
+            st.session_state["nav_lateral_shown_this_run"] = False
         st.rerun()
     
-    if st.sidebar.button("📊 Historial", use_container_width=True, type="primary" if pagina_actual == "historial" else "secondary", key="nav_historial_nut"):
+    if st.sidebar.button("📊 Historial", use_container_width=True, type="tertiary" if pagina_actual == "historial" else "primary", key="nav_historial_nut"):
         st.session_state["pagina_nutricional_actual"] = "historial"
         st.session_state["mostrar_dashboard"] = "nutricional"
-        # Limpiar flags de navegación para permitir rerun
-        if nav_key in st.session_state:
-            del st.session_state[nav_key]
+        # Resetear flags de navegación para permitir rerun
+        st.session_state[nav_key] = False
         if "nav_lateral_shown_this_run" in st.session_state:
-            del st.session_state["nav_lateral_shown_this_run"]
+            st.session_state["nav_lateral_shown_this_run"] = False
+        st.rerun()
+    
+    if st.sidebar.button("⚖️ Peso y Metas", use_container_width=True, type="tertiary" if pagina_actual == "peso" else "primary", key="nav_peso_nut"):
+        st.session_state["pagina_nutricional_actual"] = "peso"
+        st.session_state["mostrar_dashboard"] = "nutricional"
+        # Resetear flags de navegación para permitir rerun
+        st.session_state[nav_key] = False
+        if "nav_lateral_shown_this_run" in st.session_state:
+            st.session_state["nav_lateral_shown_this_run"] = False
         st.rerun()
 
 
@@ -317,15 +318,22 @@ def get_css_styles() -> str:
         border: 1px solid rgb(78 162 189) !important;
     }
     
-    button[kind="primary"]:hover, button[kind="primary"]:active {
+    button[kind="primary"]:hover {
         background-color: rgba(250, 250, 250, 0.1) !important;
-        border-color: rgba(250, 250, 250, 0.3) !important;
+        border: 1px solid rgba(250, 250, 250, 0.3) !important;
         color: rgb(78 162 189) !important;
     }
 
-
     button[kind="tertiary"] {
+        background-color: rgba(250, 250, 250, 0.1) !important;
         border: 1px solid rgb(78 162 189) !important;
+        color: rgb(78 162 189) !important;
+    }
+
+    button[kind="tertiary"]:hover {
+        background-color: rgba(250, 250, 250, 0.1) !important;
+        border: 1px solid rgba(250, 250, 250, 0.3) !important;
+        color: white !important;
     }
     
     """

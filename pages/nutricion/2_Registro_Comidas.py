@@ -6,9 +6,6 @@ Página para registrar comidas consumidas
 import streamlit as st
 from datetime import date, datetime
 from services.registro_nutricional_service import RegistroNutricionalService
-from services.nutricion_api_service import NutricionAPIService
-from services.comida_service import ComidaService
-from models.comida import Comida
 from utils.helpers import apply_css_styles
 from utils.config_manager import config_manager
 
@@ -45,162 +42,74 @@ def main():
     
     st.divider()
     
-    # Formulario para agregar comida
-    st.subheader("➕ Agregar Comida")
-    
-    with st.expander("🍽️ Agregar Comida con Descripción Natural", expanded=True):
-        with st.form("nueva_comida_natural"):
-            st.markdown("**💡 Escribe tu comida en lenguaje natural:**")
-            st.markdown("*Ejemplo: 'Hoy desayuné un omelet con jamón, 100g de frijoles refritos, un plátano y café sin azúcar'*")
-            
-            # Información sobre APIs de nutrición
-            from services.nutricion_api_service import NutricionAPIService
-            tiene_edamam = NutricionAPIService.EDAMAM_APP_ID and NutricionAPIService.EDAMAM_APP_KEY
-            tiene_nutritionix = NutricionAPIService.NUTRITIONIX_APP_ID and NutricionAPIService.NUTRITIONIX_API_KEY
-            
-            if tiene_edamam:
-                st.success("✅ **Edamam API activa** - Valores nutricionales precisos desde API gratuita")
-            elif tiene_nutritionix:
-                st.info("✅ **Nutritionix API activa** - Valores nutricionales desde API")
-            else:
-                st.warning("💡 **Tip:** Configura Edamam API (gratuita) en el archivo `.env` para obtener valores nutricionales precisos automáticamente.\n\nVer: `CONFIGURAR_API_NUTRICION.md`")
-            
-            descripcion_completa = st.text_area(
-                "📝 Descripción de la comida:",
-                placeholder="Ej: Omelet con jamón, 100g de frijoles refritos, un plátano y café sin azúcar",
-                height=100
-            )
-            
-            momento = st.selectbox(
-                "🕐 Momento del día:",
-                ["Desayuno", "Almuerzo", "Cena", "Snacks"],
-                index=0
-            )
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.form_submit_button("🔍 Parsear y Agregar", use_container_width=True):
-                    if descripcion_completa:
-                        with st.spinner("🔍 Parseando descripción..."):
-                            try:
-                                # Parsear descripción completa
-                                alimentos = NutricionAPIService.parsear_comida_completa(descripcion_completa)
-                                
-                                if alimentos and len(alimentos) > 0:
-                                    alimentos_guardados = 0
-                                    alimentos_con_error = 0
-                                    alimentos_sin_api = 0
-                                    alimentos_con_valores = 0
-                                    
-                                    # Verificar si hay API configurada
-                                    tiene_edamam = NutricionAPIService.EDAMAM_APP_ID and NutricionAPIService.EDAMAM_APP_KEY
-                                    tiene_nutritionix = NutricionAPIService.NUTRITIONIX_APP_ID and NutricionAPIService.NUTRITIONIX_API_KEY
-                                    tiene_api = tiene_edamam or tiene_nutritionix
-                                    
-                                    # Agregar cada alimento al registro
-                                    for alimento in alimentos:
-                                        try:
-                                            # Verificar si el alimento necesita API
-                                            necesita_api = alimento.get("necesita_api", False)
-                                            tiene_valores = alimento.get("calorias", 0) > 0
-                                            
-                                            if necesita_api and not tiene_api:
-                                                alimentos_sin_api += 1
-                                            elif tiene_valores:
-                                                alimentos_con_valores += 1
-                                            
-                                            comida_data = {
-                                                "nombre": alimento.get("nombre", "Comida sin nombre"),
-                                                "calorias": alimento.get("calorias", 0),
-                                                "proteinas": alimento.get("proteinas", 0),
-                                                "carbohidratos": alimento.get("carbohidratos", 0),
-                                                "grasas": alimento.get("grasas", 0),
-                                                "cantidad": alimento.get("cantidad", 100.0),
-                                                "unidad": alimento.get("unidad", "g"),
-                                                "descripcion": alimento.get("descripcion", descripcion_completa),
-                                                "momento": momento
-                                            }
-                                            
-                                            if RegistroNutricionalService.agregar_comida(fecha_seleccionada, comida_data):
-                                                alimentos_guardados += 1
-                                            else:
-                                                alimentos_con_error += 1
-                                        except Exception as e:
-                                            st.error(f"❌ Error al guardar alimento: {e}")
-                                            alimentos_con_error += 1
-                                    
-                                    if alimentos_guardados > 0:
-                                        mensaje = f"✅ {alimentos_guardados} alimento(s) agregado(s) correctamente"
-                                        
-                                        if alimentos_sin_api > 0:
-                                            st.error(f"❌ **API no configurada:** {alimentos_sin_api} alimento(s) no tienen valores nutricionales porque no hay API configurada.")
-                                            st.warning("⚠️ **Configura Edamam API (gratuita)** para obtener valores nutricionales precisos.\n\nVer: `CONFIGURAR_API_NUTRICION.md`")
-                                        elif alimentos_con_valores < alimentos_guardados:
-                                            st.warning(f"⚠️ Algunos alimentos no tienen valores nutricionales. Configura una API para obtenerlos automáticamente.")
-                                        
-                                        if alimentos_con_error > 0:
-                                            st.warning(f"⚠️ {alimentos_con_error} alimento(s) no se pudieron guardar")
-                                        
-                                        st.success(mensaje)
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ No se pudieron guardar los alimentos. Verifica la conexión a la base de datos.")
-                                else:
-                                    st.warning("⚠️ No se pudieron identificar alimentos. Intenta ser más específico o usa el formulario manual.")
-                            except Exception as e:
-                                st.error(f"❌ Error al parsear la descripción: {e}")
-                                st.info("💡 **Tip:** Intenta usar el formulario manual si el parseo automático no funciona.")
-                    else:
-                        st.error("❌ Por favor ingresa una descripción")
-            
-            with col2:
-                if st.form_submit_button("❌ Cancelar", use_container_width=True):
-                    st.rerun()
-    
-    st.divider()
-    
-    # Formulario para agregar comida manual
-    with st.expander("✏️ Agregar Comida Manualmente", expanded=False):
-        with st.form("nueva_comida_manual"):
+    # Formulario para agregar comida - VERSIÓN SIMPLIFICADA (colapsado por defecto)
+    with st.expander("➕ Agregar Comida", expanded=False):
+        st.markdown("💡 **Ingresa las calorías que consumiste.** Puedes investigar los valores nutricionales por tu cuenta.")
+        
+        # Formulario simplificado principal
+        with st.form("nueva_comida_simple", clear_on_submit=True):
             col1, col2 = st.columns(2)
             
             with col1:
-                nombre = st.text_input("🍽️ Nombre de la comida")
-                momento = st.selectbox(
-                    "🕐 Momento:",
-                    ["Desayuno", "Almuerzo", "Cena", "Snacks"],
-                    key="momento_manual"
+                nombre = st.text_input(
+                    "🍽️ Nombre de la comida *",
+                    placeholder="Ej: Omelet con jamón y queso",
+                    help="Nombre descriptivo de lo que comiste"
                 )
-                cantidad = st.number_input("📏 Cantidad", min_value=0.0, step=0.1, value=100.0)
-                unidad = st.selectbox("📐 Unidad", ["g", "ml", "oz", "unidad"], index=0)
+                momento = st.selectbox(
+                    "🕐 Momento del día *",
+                    ["Desayuno", "Almuerzo", "Cena", "Snacks"],
+                    index=0
+                )
             
             with col2:
-                calorias = st.number_input("🔥 Calorías", min_value=0.0, step=0.1, value=0.0)
-                proteinas = st.number_input("🥩 Proteínas (g)", min_value=0.0, step=0.1, value=0.0)
-                carbohidratos = st.number_input("🍞 Carbohidratos (g)", min_value=0.0, step=0.1, value=0.0)
-                grasas = st.number_input("🧈 Grasas (g)", min_value=0.0, step=0.1, value=0.0)
+                calorias = st.number_input(
+                    "🔥 Calorías *",
+                    min_value=0.0,
+                    step=1.0,
+                    value=0.0,
+                    help="Total de calorías de esta comida"
+                )
+                
+                # Macronutrientes opcionales (colapsados)
+                # Inicializar con valores por defecto
+                proteinas = 0.0
+                carbohidratos = 0.0
+                grasas = 0.0
+                
+                with st.expander("📊 Macronutrientes (Opcional)", expanded=False):
+                    proteinas = st.number_input("🥩 Proteínas (g)", min_value=0.0, step=0.1, value=0.0, key="proteinas_simple")
+                    carbohidratos = st.number_input("🍞 Carbohidratos (g)", min_value=0.0, step=0.1, value=0.0, key="carbohidratos_simple")
+                    grasas = st.number_input("🧈 Grasas (g)", min_value=0.0, step=0.1, value=0.0, key="grasas_simple")
             
+            # Botón de guardar
             if st.form_submit_button("💾 Guardar Comida", use_container_width=True):
-                if nombre and calorias >= 0:
+                if nombre and nombre.strip() and calorias > 0:
                     comida_data = {
-                        "nombre": nombre,
-                        "calorias": calorias,
-                        "proteinas": proteinas,
-                        "carbohidratos": carbohidratos,
-                        "grasas": grasas,
-                        "cantidad": cantidad,
-                        "unidad": unidad,
-                        "descripcion": nombre,
+                        "nombre": nombre.strip(),
+                        "calorias": float(calorias),
+                        "proteinas": float(proteinas),
+                        "carbohidratos": float(carbohidratos),
+                        "grasas": float(grasas),
+                        "cantidad": 100.0,  # Valor por defecto
+                        "unidad": "g",
+                        "descripcion": nombre.strip(),
                         "momento": momento
                     }
                     
                     if RegistroNutricionalService.agregar_comida(fecha_seleccionada, comida_data):
-                        st.success("✅ Comida agregada correctamente")
+                        st.success(f"✅ **{nombre}** agregado correctamente ({calorias:.0f} cal)")
+                        # Limpiar caché para asegurar que se vean los datos actualizados
+                        RegistroNutricionalService._obtener_por_fecha_cached.clear()
+                        # Marcar que hay datos nuevos para que el dashboard se actualice automáticamente
+                        st.session_state["datos_nutricionales_actualizados"] = True
                         st.rerun()
                     else:
-                        st.error("❌ Error al agregar la comida")
-                else:
-                    st.error("❌ Por favor completa todos los campos requeridos")
+                        st.error("❌ Error al guardar la comida. Verifica la conexión a la base de datos.")
+                elif not nombre or not nombre.strip():
+                    st.error("❌ Por favor ingresa el nombre de la comida")
+                elif calorias <= 0:
+                    st.error("❌ Por favor ingresa las calorías (debe ser mayor a 0)")
     
     st.divider()
     
