@@ -73,12 +73,20 @@ class ReporteService:
             # Obtener gastos recurrentes
             gastos_recurrentes = ReporteService._obtener_gastos_recurrentes()
             
+            # Incluir metas de ahorro para el dashboard (Ahorro del Mes, gráficas)
+            from utils.database import cargar_metas
+            metas = cargar_metas()
+            meta_mensual = float(metas.get("meta_mensual", 0))
+            meta_anual = float(metas.get("meta_anual", 0))
+            
             return {
                 "saldo_total": saldo_total,
                 "gastos_mes": gastos_mes,
                 "ingresos_mes": ingresos_mes,
                 "ahorro_actual": ahorro_actual,
                 "ahorro_acumulado_anual": ahorro_acumulado_anual,
+                "meta_mensual": meta_mensual,
+                "meta_anual": meta_anual,
                 "top_gastos": top_gastos,
                 "gastos_por_categoria": gastos_por_categoria,
                 "gastos_por_tipo": gastos_por_tipo,
@@ -222,6 +230,7 @@ class ReporteService:
             return {}
     
     @staticmethod
+    @st.cache_data(ttl=60, max_entries=24, show_spinner=False)
     def calcular_ahorro_real_mes(mes: int, año: int) -> float:
         """Calcular el ahorro real (incremento del saldo total de cuentas) para un mes"""
         try:

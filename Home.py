@@ -113,11 +113,8 @@ def mostrar_graficas_principales(resumen):
     
     with col2:
         # Sección de progreso de ahorros (solo gráfica del velocímetro anual, sin métricas)
-        
-        # Obtener metas desde la base de datos
-        from utils.database import cargar_metas
-        metas = cargar_metas()
-        meta_anual = metas.get("meta_anual", 0)
+        # Usar metas que ya vienen en el resumen; no hacer peticiones adicionales
+        meta_anual = resumen.get("meta_anual", 0)
         ahorro_acumulado_anual = resumen.get("ahorro_acumulado_anual", 0)  # Ahorro acumulado del año
         
         # Gráfico de progreso de ahorro anual (velocímetro)
@@ -263,6 +260,10 @@ def main():
     from utils.helpers import mostrar_navegacion_lateral_financiera
     mostrar_navegacion_lateral_financiera()
     
+    # Al salir del dashboard, invalidar caché de resumen para que al volver se recargue
+    if pagina_actual != "dashboard" and "dashboard_resumen" in st.session_state:
+        del st.session_state["dashboard_resumen"]
+    
     # Solo cargar datos del dashboard si estamos en la página del dashboard
     if pagina_actual == "dashboard":
         # Header principal del dashboard financiero
@@ -273,18 +274,26 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Cargar datos del dashboard (solo cuando es necesario)
+        # Cargar datos del dashboard una sola vez; reutilizar si ya están en sesión
         try:
-            resumen = ReporteService.generar_resumen_financiero()
-            configuracion = cargar_configuracion()
+            cache_key = "dashboard_resumen"
+            if cache_key not in st.session_state:
+                resumen = ReporteService.generar_resumen_financiero()
+                if resumen:
+                    st.session_state[cache_key] = resumen
+                else:
+                    resumen = {}
+            else:
+                resumen = st.session_state[cache_key]
             
-            # Sincronizar configuraciones con Firebase si es necesario (sin bloquear)
-            try:
-                if not config_manager.sync_with_firebase():
-                    st.warning("⚠️ No se pudo sincronizar con Firebase. Usando configuración local.")
-            except Exception as sync_error:
-                # Si falla la sincronización, continuar sin bloquear
-                print(f"Error sincronizando con Firebase: {sync_error}")
+            # Sincronizar con Firebase solo una vez por sesión (evitar peticiones repetidas)
+            if "config_synced" not in st.session_state:
+                try:
+                    config_manager.sync_with_firebase()
+                    st.session_state["config_synced"] = True
+                except Exception as sync_error:
+                    st.session_state["config_synced"] = True
+                    print(f"Error sincronizando con Firebase: {sync_error}")
         except Exception as e:
             show_error_message(f"Error cargando datos: {e}")
             st.info("💡 Intenta recargar la página o verifica tu conexión.")

@@ -495,6 +495,9 @@ def _invalidate_cache_for_path(path: str):
         if collection_name in cache_functions:
             # Limpiar todo el caché de Streamlit para asegurar que se actualice
             st.cache_data.clear()
+            # Invalidar resumen del dashboard para que al volver se recargue
+            if "dashboard_resumen" in st.session_state:
+                del st.session_state["dashboard_resumen"]
             print(f"[CACHE] Invalidado caché para: {collection_name}")
     except Exception as e:
         print(f"Error invalidando caché: {e}")

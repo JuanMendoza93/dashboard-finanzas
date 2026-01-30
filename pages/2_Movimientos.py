@@ -235,7 +235,7 @@ def mostrar_movimientos(mes, año, configuracion):
     
     # Filtros para la tabla de movimientos
     st.markdown("**🔍 Filtros:**")
-    col_filtro1, col_filtro2 = st.columns(2)
+    col_filtro1, col_filtro2, col_filtro3 = st.columns(3)
     
     with col_filtro1:
         # Filtro por tipo
@@ -249,16 +249,26 @@ def mostrar_movimientos(mes, año, configuracion):
     
     with col_filtro2:
         # Filtro por categoría - usar categorías de la base de datos (configuración)
-        # Combinar categorías de la configuración con las categorías usadas en movimientos
         categorias_config = set(configuracion.get("categorias", []))
         categorias_movimientos = set(m.categoria for m in movimientos_originales)
-        # Unir ambas listas y eliminar duplicados, luego ordenar
         categorias_disponibles = ["Todas"] + sorted(list(categorias_config | categorias_movimientos))
         categoria_seleccionada = st.selectbox(
             "📂 Filtrar por categoría:",
             categorias_disponibles,
             index=0,
             key="filtro_categoria_movimiento"
+        )
+    
+    with col_filtro3:
+        # Filtro por tipo de gasto (solo aplica a movimientos tipo Gasto)
+        tipos_gasto_config = set(configuracion.get("tipos_gasto", []))
+        tipos_gasto_movimientos = set(m.tipo_gasto for m in movimientos_originales if m.tipo == "Gasto")
+        tipos_gasto_disponibles = ["Todos"] + sorted(list(tipos_gasto_config | tipos_gasto_movimientos))
+        tipo_gasto_seleccionado = st.selectbox(
+            "🔍 Filtrar por tipo de gasto:",
+            tipos_gasto_disponibles,
+            index=0,
+            key="filtro_tipo_gasto_movimiento"
         )
     
     # Aplicar filtros
@@ -271,6 +281,9 @@ def mostrar_movimientos(mes, año, configuracion):
     
     if categoria_seleccionada != "Todas":
         movimientos_mes = [m for m in movimientos_mes if m.categoria == categoria_seleccionada]
+    
+    if tipo_gasto_seleccionado != "Todos":
+        movimientos_mes = [m for m in movimientos_mes if m.tipo_gasto == tipo_gasto_seleccionado]
     
     st.divider()
     
@@ -431,6 +444,40 @@ def mostrar_movimientos(mes, año, configuracion):
                 if st.form_submit_button("❌ Cancelar", use_container_width=True):
                     st.session_state[f"editando_movimiento_{movimiento_en_edicion.id}"] = False
                     st.rerun()
+    
+    # Sección: Top 10 gastos según el resultado actual (respeta filtros)
+    _mostrar_top10_gastos(movimientos_mes)
+
+
+def _mostrar_top10_gastos(movimientos_lista):
+    """Mostrar los 10 movimientos de gasto con mayor monto del resultado actual (respeta filtros)."""
+    # Del resultado actual (ya filtrado por tipo/categoría/tipo de gasto), tomar solo gastos
+    gastos = [m for m in movimientos_lista if m.tipo == "Gasto"]
+    if not gastos:
+        return
+    
+    # Ordenar por monto absoluto descendente y tomar los top 10
+    gastos.sort(key=lambda x: x.monto_absoluto, reverse=True)
+    top10 = gastos[:10]
+    
+    st.divider()
+    st.subheader("💸 Top 10 Gastos")
+    
+    with st.expander(f"Ver los 10 gastos de mayor monto ({len(top10)} registros)", expanded=False):
+        for i, m in enumerate(top10, 1):
+            col1, col2, col3, col4, col5 = st.columns([0.5, 3, 2, 1.5, 2])
+            with col1:
+                st.write(f"**#{i}**")
+            with col2:
+                st.write(f"**{m.concepto}**")
+            with col3:
+                st.write(f"{m.fecha.strftime('%d/%m/%Y')} · {m.categoria}")
+            with col4:
+                st.write(f"{m.tipo_gasto}")
+            with col5:
+                st.write(f"**{config_manager.get_formatted_currency(m.monto_absoluto)}**")
+            if i < len(top10):
+                st.markdown("<hr style='margin: 2px 0; border: none; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
 
 
 if __name__ == "__main__":

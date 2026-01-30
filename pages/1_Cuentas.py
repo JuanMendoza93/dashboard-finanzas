@@ -25,6 +25,28 @@ def main():
     # Cargar configuración
     configuracion = cargar_configuracion()
     
+    # Saldo total al inicio con indicador de color (verde >= 100,000 / rojo < 100,000)
+    cuentas = CuentaService.obtener_todas()
+    saldo_total = sum(c.saldo for c in cuentas) if cuentas else 0
+    es_verde = saldo_total >= 100_000
+    icono_saldo = "💚" if es_verde else "🔴"
+    bg_saldo = "#d4edda" if es_verde else "#f8d7da"
+    border_saldo = "#28a745" if es_verde else "#dc3545"
+    text_saldo = "#155724" if es_verde else "#721c24"
+    st.markdown(f"""
+    <div style="
+        background: {bg_saldo};
+        border: 2px solid {border_saldo};
+        border-radius: 10px;
+        padding: 1rem;
+        text-align: center;
+        margin: 0.5rem 0 1.5rem 0;
+    ">
+        <h3 style="color: {text_saldo}; margin: 0;">{icono_saldo} Saldo Total</h3>
+        <h2 style="color: {text_saldo}; margin: 0.5rem 0;">{config_manager.get_formatted_currency(saldo_total)}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # Mostrar cuentas existentes
     mostrar_cuentas()
     
