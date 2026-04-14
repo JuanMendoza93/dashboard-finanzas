@@ -14,6 +14,8 @@ class Cuenta:
     id: str
     nombre: str
     saldo: float
+    rendimiento_anual: float = 0.0
+    limite: float = 0.0
     fecha_creacion: Optional[datetime] = None
     
     def __post_init__(self):
@@ -27,6 +29,8 @@ class Cuenta:
             id=data.get('id', ''),
             nombre=data.get('nombre', ''),
             saldo=float(data.get('saldo', 0)),
+            rendimiento_anual=float(data.get('rendimiento_anual', data.get('rendimiento', 0))) ,
+            limite=float(data.get('limite', 0)),
             fecha_creacion=data.get('fecha_creacion')
         )
     
@@ -50,6 +54,8 @@ class Cuenta:
             "id": self.id,
             "nombre": self.nombre,
             "saldo": self.saldo,
+            "rendimiento_anual": self.rendimiento_anual,
+            "limite": self.limite,
             "fecha_creacion": self.fecha_creacion.isoformat() if self.fecha_creacion else None
         }
     

@@ -149,6 +149,25 @@ class CuentaValidator:
         )
         if not is_valid:
             errors.append(error)
+
+        # Validar rendimiento anual (porcentaje entre 0 y 100)
+        is_valid, error = DataValidator.validate_numeric_field(
+            data.get("rendimiento_anual", 0),
+            "Rendimiento anual",
+            min_value=0,
+            max_value=100
+        )
+        if not is_valid:
+            errors.append(error)
+
+        # Validar limite (puede ser 0 o mayor)
+        is_valid, error = DataValidator.validate_numeric_field(
+            data.get("limite", 0),
+            "Límite",
+            min_value=0
+        )
+        if not is_valid:
+            errors.append(error)
         
         return len(errors) == 0, errors
     
@@ -173,6 +192,27 @@ class CuentaValidator:
             is_valid, error = DataValidator.validate_numeric_field(
                 data["saldo"],
                 "Saldo",
+                min_value=0
+            )
+            if not is_valid:
+                errors.append(error)
+
+        # Validar rendimiento anual si viene
+        if "rendimiento_anual" in data:
+            is_valid, error = DataValidator.validate_numeric_field(
+                data["rendimiento_anual"],
+                "Rendimiento anual",
+                min_value=0,
+                max_value=100
+            )
+            if not is_valid:
+                errors.append(error)
+
+        # Validar limite si viene
+        if "limite" in data:
+            is_valid, error = DataValidator.validate_numeric_field(
+                data["limite"],
+                "Límite",
                 min_value=0
             )
             if not is_valid:

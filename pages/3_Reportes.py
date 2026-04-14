@@ -265,12 +265,10 @@ def mostrar_analisis_detallado():
     meta_mensual = metas.get("meta_mensual", 0)
     
     if meta_mensual > 0:
-        # Obtener ahorro del mes actual
-        ahora = datetime.now()
-        ahorro_actual = ReporteService.generar_resumen_financiero().get("ahorro_actual", 0)
-        
-        # Calcular progreso mensual
-        progreso_mensual = min(ahorro_actual / meta_mensual, 2.0) * 100
+        # Obtener ahorro real y progreso desde el servicio (usa ahorro real)
+        reporte_ahorro = ReporteService.generar_reporte_ahorro()
+        ahorro_actual = reporte_ahorro.get("ahorro_actual", 0)
+        progreso_mensual = reporte_ahorro.get("progreso_mensual", 0) * 100
         
         col1, col2 = st.columns(2)
         
@@ -469,13 +467,10 @@ def mostrar_analisis_anual():
     meta_anual = metas.get("meta_anual", 0)
     
     if meta_anual > 0:
-        # Obtener ahorro acumulado del año actual
-        ahora = datetime.now()
-        resumen = ReporteService.generar_resumen_financiero()
-        ahorro_acumulado_anual = resumen.get("ahorro_acumulado_anual", 0)
-        
-        # Calcular progreso anual
-        progreso_anual = min(ahorro_acumulado_anual / meta_anual, 2.0) * 100
+        # Obtener ahorro acumulado y progreso desde el servicio (usa ahorro real)
+        reporte_ahorro = ReporteService.generar_reporte_ahorro()
+        ahorro_acumulado_anual = reporte_ahorro.get("ahorro_acumulado_anual", 0)
+        progreso_anual = reporte_ahorro.get("progreso_anual", 0) * 100
         
         col1, col2 = st.columns(2)
         

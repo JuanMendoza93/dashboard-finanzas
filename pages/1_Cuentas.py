@@ -63,11 +63,20 @@ def main():
             with col2:
                 saldo_inicial = st.text_input("💰 Saldo Inicial", placeholder="0.00", help="Ingresa el saldo inicial de la cuenta")
             
+            col3, col4 = st.columns(2)
+            with col3:
+                rendimiento_anual = st.text_input("📈 Rendimiento Anual (%)", placeholder="Ej: 15", help="Porcentaje anual estimado")
+            with col4:
+                limite = st.text_input("🚫 Límite", placeholder="0.00", help="Límite o tope asociado a la cuenta")
+            
             if st.form_submit_button("💾 Crear Cuenta", use_container_width=True):
                 if nombre_cuenta and saldo_inicial:
                     try:
                         saldo_float = float(saldo_inicial)
-                        cuenta = CuentaService.crear(nombre_cuenta, saldo_float)
+                        # Parsear opcionales
+                        rendimiento_val = float(rendimiento_anual) if rendimiento_anual else 0.0
+                        limite_val = float(limite) if limite else 0.0
+                        cuenta = CuentaService.crear(nombre_cuenta, saldo_float, rendimiento_val, limite_val)
                         if cuenta:
                             st.success(f"✅ Cuenta '{nombre_cuenta}' creada exitosamente!")
                             st.rerun()
@@ -100,7 +109,10 @@ def mostrar_cuentas():
                 st.markdown(f"""
                 <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin: 5px 0;">
                     <h4>🏦 {cuenta.nombre}</h4>
-                    <p><strong>Saldo:</strong> {config_manager.get_formatted_currency(cuenta.saldo)}</p></p>
+                    <p><strong>Saldo:</strong> {config_manager.get_formatted_currency(cuenta.saldo)}</p>
+                    <p><strong>Rendimiento anual:</strong> {cuenta.rendimiento_anual}%</p>
+                    <p><strong>Límite:</strong> {config_manager.get_formatted_currency(cuenta.limite)}</p>
+                    <p><strong>Proyección 15 días:</strong> {config_manager.get_formatted_currency(CuentaService.proyectar_siguiente_quincena(cuenta.saldo, cuenta.rendimiento_anual))}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -135,6 +147,12 @@ def mostrar_cuentas():
                         
                         with col2:
                             nuevo_saldo = st.text_input("Saldo", value=str(cuenta.saldo), key=f"saldo_{cuenta.id}")
+
+                        col3, col4 = st.columns(2)
+                        with col3:
+                            nuevo_rend = st.text_input("Rendimiento Anual (%)", value=str(cuenta.rendimiento_anual), key=f"rend_{cuenta.id}")
+                        with col4:
+                            nuevo_lim = st.text_input("Límite", value=str(cuenta.limite), key=f"lim_{cuenta.id}")
                         
                         col1, col2 = st.columns(2)
                         
@@ -142,7 +160,9 @@ def mostrar_cuentas():
                             if st.form_submit_button("💾 Guardar", use_container_width=True):
                                 try:
                                     saldo_float = float(nuevo_saldo)
-                                    if CuentaService.actualizar(cuenta.id, nuevo_nombre, saldo_float):
+                                    rend_val = float(nuevo_rend) if nuevo_rend else 0.0
+                                    lim_val = float(nuevo_lim) if nuevo_lim else 0.0
+                                    if CuentaService.actualizar(cuenta.id, nuevo_nombre, saldo_float, rend_val, lim_val):
                                         # Limpiar caché explícitamente antes del rerun
                                         CuentaService._obtener_todas_cached.clear()
                                         st.cache_data.clear()

@@ -54,7 +54,7 @@ class CuentaService:
             return None
     
     @staticmethod
-    def crear(nombre: str, saldo_inicial: float = 0.0) -> Optional[Cuenta]:
+    def crear(nombre: str, saldo_inicial: float = 0.0, rendimiento_anual: float = 0.0, limite: float = 0.0) -> Optional[Cuenta]:
         """Crear nueva cuenta (invalida caché)"""
         try:
             # Validar que el nombre no esté duplicado
@@ -67,7 +67,9 @@ class CuentaService:
             
             cuenta_data = {
                 "nombre": nombre,
-                "saldo": saldo_inicial
+                "saldo": saldo_inicial,
+                "rendimiento_anual": float(rendimiento_anual),
+                "limite": float(limite)
             }
             
             # Agregar a Firebase Realtime Database usando la nueva estructura
@@ -83,7 +85,7 @@ class CuentaService:
             return None
     
     @staticmethod
-    def actualizar(cuenta_id: str, nombre: str, saldo: float) -> bool:
+    def actualizar(cuenta_id: str, nombre: str, saldo: float, rendimiento_anual: float | None = None, limite: float | None = None) -> bool:
         """Actualizar cuenta existente (invalida caché)"""
         try:
             # Validar que el nombre no esté duplicado (excluyendo la cuenta actual)
@@ -98,6 +100,12 @@ class CuentaService:
                 "nombre": nombre,
                 "saldo": saldo
             }
+
+            # Añadir campos opcionales si se proporcionan
+            if rendimiento_anual is not None:
+                cuenta_data["rendimiento_anual"] = float(rendimiento_anual)
+            if limite is not None:
+                cuenta_data["limite"] = float(limite)
             # Usar get_financial_path para apuntar a la nueva estructura
             result = firebase_set(f"{get_financial_path('cuentas')}/{cuenta_id}", cuenta_data)
             if result:
@@ -145,3 +153,18 @@ class CuentaService:
         except Exception as e:
             print(f"Error calculando saldo total: {e}")
             return 0.0
+
+    @staticmethod
+    def proyectar_siguiente_quincena(saldo: float, rendimiento_anual_percent: float) -> float:
+        """Calcular proyección para la siguiente quincena usando rendimiento anual.
+
+        Fórmula aproximada: saldo * (1 + r_periodo)
+        donde r_periodo = rendimiento_anual_percent / 100 * (15/365)
+        """
+        try:
+            r_anual = float(rendimiento_anual_percent) / 100.0
+            periodo_frac = 15.0 / 365.0
+            saldo_proyectado = saldo * (1 + r_anual * periodo_frac)
+            return saldo_proyectado
+        except Exception:
+            return saldo

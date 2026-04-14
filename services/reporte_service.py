@@ -174,22 +174,27 @@ class ReporteService:
             meta_mensual = float(metas_data.get("meta_mensual", 0))
             meta_anual = float(metas_data.get("meta_anual", 0))
             
-            # Calcular ahorro actual
+            # Calcular ahorro real del mes actual y ahorro acumulado anual (usando ahorro real)
+            ahora = datetime.now()
+            ahorro_real_mes_actual = ReporteService.calcular_ahorro_real_mes(ahora.month, ahora.year)
+
+            # Obtener resumen para el ahorro acumulado anual (ya usa ahorro real en su cálculo)
             resumen = ReporteService.generar_resumen_financiero()
-            ahorro_actual = resumen.get("ahorro_actual", 0)
-            
-            # Calcular progreso
-            progreso_mensual = min(ahorro_actual / meta_mensual, 1.0) if meta_mensual > 0 else 0
-            progreso_anual = min(ahorro_actual / meta_anual, 1.0) if meta_anual > 0 else 0
-            
+            ahorro_acumulado_anual = resumen.get("ahorro_acumulado_anual", 0)
+
+            # Calcular progreso: mensual usa ahorro real del mes; anual usa ahorro acumulado real
+            progreso_mensual = min(ahorro_real_mes_actual / meta_mensual, 1.0) if meta_mensual > 0 else 0
+            progreso_anual = min(ahorro_acumulado_anual / meta_anual, 1.0) if meta_anual > 0 else 0
+
             return {
                 "meta_mensual": meta_mensual,
                 "meta_anual": meta_anual,
-                "ahorro_actual": ahorro_actual,
+                "ahorro_actual": ahorro_real_mes_actual,
+                "ahorro_acumulado_anual": ahorro_acumulado_anual,
                 "progreso_mensual": progreso_mensual,
                 "progreso_anual": progreso_anual,
-                "diferencia_mensual": ahorro_actual - meta_mensual,
-                "diferencia_anual": ahorro_actual - meta_anual
+                "diferencia_mensual": ahorro_real_mes_actual - meta_mensual,
+                "diferencia_anual": ahorro_acumulado_anual - meta_anual
             }
         except Exception as e:
             print(f"Error generando reporte de ahorro: {e}")
