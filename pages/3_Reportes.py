@@ -95,7 +95,7 @@ def mostrar_analisis_detallado():
     mes_actual = ahora.month
     
     # Obtener saldo inicial (saldo total de cuentas al inicio del primer mes)
-    saldo_inicial = 0
+    saldo_anterior = 0
     if año_inicio == 2025 and mes_inicio == 10:
         # Para el primer mes, obtener el saldo guardado en reportes o calcular desde cuentas
         reportes = ReporteService.obtener_reportes_mensuales()
@@ -103,7 +103,7 @@ def mostrar_analisis_detallado():
             # Buscar el reporte más antiguo para obtener el saldo inicial
             primer_reporte = min(reportes, key=lambda x: (x.get("año", 0), x.get("mes", 0)))
             if primer_reporte and "saldo_final_mes" in primer_reporte:
-                saldo_inicial = primer_reporte["saldo_final_mes"] - primer_reporte.get("ahorro_real", 0)
+                saldo_anterior = primer_reporte["saldo_final_mes"] - primer_reporte.get("ahorro_real", 0)
     
     # Crear diccionario de reportes para acceso rápido por año-mes
     reportes_guardados = ReporteService.obtener_reportes_mensuales()
@@ -134,9 +134,6 @@ def mostrar_analisis_detallado():
             
             ahorro_mes = ingresos_mes - gastos_mes
             
-            # Calcular ahorro real
-            ahorro_real = ReporteService.calcular_ahorro_real_mes(mes, año)
-            
             # Obtener saldo total guardado del reporte mensual (saldo total de cuentas al final del mes)
             # Si existe un reporte guardado para este mes, usarlo; si no, calcular desde el saldo actual
             saldo_final_mes = None
@@ -149,6 +146,9 @@ def mostrar_analisis_detallado():
                 cuentas = CuentaService.obtener_todas()
                 saldo_final_mes = sum(cuenta.saldo for cuenta in cuentas)
             
+            # Calcular ahorro real como la diferencia entre el saldo actual y el anterior
+            ahorro_real = saldo_final_mes - saldo_anterior
+            
             fecha_mes = datetime(año, mes, 1)
             meses_datos.append(fecha_mes)
             gastos_mensuales.append(gastos_mes)
@@ -156,6 +156,9 @@ def mostrar_analisis_detallado():
             ahorros_mensuales.append(ahorro_mes)
             ahorros_reales.append(ahorro_real)
             saldos_mensuales.append(saldo_final_mes)
+            
+            # Actualizar saldo anterior para el próximo mes
+            saldo_anterior = saldo_final_mes
             
             nombres_meses = [
                 "Ene", "Feb", "Mar", "Abr", "May", "Jun",
@@ -337,21 +340,38 @@ def mostrar_analisis_anual():
     gastos_anuales = []
     ingresos_anuales = []
     ahorros_anuales = []
+    saldos_iniciales_anuales = []
+    saldos_finales_anuales = []
     años_labels = []
     
     # Calcular años a analizar (desde 2025 hasta el año actual)
     años_a_analizar = list(range(año_inicio, año_actual + 1))
+    
+    # Crear diccionario de reportes para acceso rápido
+    reportes_anuales = ReporteService.obtener_reportes_mensuales()
+    reportes_dict_anual = {}
+    if reportes_anuales and len(reportes_anuales) > 0:
+        for reporte in reportes_anuales:
+            año_reporte = reporte.get("año")
+            mes_reporte = reporte.get("mes")
+            if año_reporte and mes_reporte:
+                reportes_dict_anual[(año_reporte, mes_reporte)] = reporte
     
     for año_analisis in años_a_analizar:
         
         # Obtener todos los movimientos del año
         gastos_año = 0
         ingresos_año = 0
-        ahorro_real_año = 0
         
-        # Obtener reportes mensuales del año para calcular ahorro real
-        reportes_anuales = ReporteService.obtener_reportes_mensuales()
-        reportes_del_año = [r for r in reportes_anuales if r.get("año") == año_analisis]
+        # Obtener saldo inicial y saldo final considerando el mes de inicio
+        # Para 2025, comienza en octubre; para otros años, comienza en enero
+        mes_inicio_año = 10 if año_analisis == 2025 else 1
+        mes_actual = ahora.month
+        mes_fin_año = 12 if año_analisis != año_actual else mes_actual
+        
+        # Obtener saldo inicial (primer mes del período) y saldo final (último mes del período)
+        saldo_inicial_año = 0
+        saldo_final_año = 0
         
         for mes in range(1, 13):
             movimientos_mes = MovimientoService.obtener_por_mes(mes, año_analisis)
@@ -365,24 +385,37 @@ def mostrar_analisis_anual():
             ingresos_mov = [m for m in movimientos_mes if m.tipo == "Ingreso"]
             ingresos_mes = sum(m.monto for m in ingresos_mov)
             
-            gastos_año += gastos_mes
-            ingresos_año += ingresos_mes
+            # Solo contar meses dentro del rango del año
+            if mes >= mes_inicio_año and mes <= mes_fin_año:
+                gastos_año += gastos_mes
+                ingresos_año += ingresos_mes
             
-            # Obtener ahorro real del mes desde reportes o calcular
-            ahorro_real_mes = 0
-            reporte_mes = next((r for r in reportes_del_año if r.get("mes") == mes), None)
-            if reporte_mes and "ahorro_real" in reporte_mes:
-                ahorro_real_mes = reporte_mes.get("ahorro_real", 0)
-            else:
-                # Si no hay reporte, calcular el ahorro real del mes
-                ahorro_real_mes = ReporteService.calcular_ahorro_real_mes(mes, año_analisis)
+            # Obtener saldo del mes desde reportes o calcular
+            saldo_mes = None
+            if (año_analisis, mes) in reportes_dict_anual:
+                reporte_mes = reportes_dict_anual[(año_analisis, mes)]
+                saldo_mes = reporte_mes.get("saldo_final_mes")
             
-            ahorro_real_año += ahorro_real_mes
+            # Si no hay reporte guardado, usar el saldo actual de las cuentas
+            if saldo_mes is None:
+                cuentas = CuentaService.obtener_todas()
+                saldo_mes = sum(cuenta.saldo for cuenta in cuentas)
+            
+            # Asignar saldo inicial (primer mes del período) y saldo final (último mes del período)
+            if mes == mes_inicio_año:
+                saldo_inicial_año = saldo_mes
+            if mes == mes_fin_año:
+                saldo_final_año = saldo_mes
+        
+        # Calcular ahorro real anual como la diferencia entre saldo final e inicial
+        ahorro_real_año = saldo_final_año - saldo_inicial_año
         
         años_datos.append(año_analisis)
         gastos_anuales.append(gastos_año)
         ingresos_anuales.append(ingresos_año)
-        ahorros_anuales.append(ahorro_real_año)  # Usar ahorro real en lugar de calculado
+        ahorros_anuales.append(ahorro_real_año)
+        saldos_iniciales_anuales.append(saldo_inicial_año)
+        saldos_finales_anuales.append(saldo_final_año)
         años_labels.append(str(año_analisis))
     
     # Tabla de evaluación anual dentro de un expander (colapsada, arriba de la gráfica)
@@ -393,6 +426,8 @@ def mostrar_analisis_anual():
             'Año': años_labels[::-1],
             'Gastos': [f"${g:,.2f}" for g in gastos_anuales[::-1]],
             'Ingresos': [f"${i:,.2f}" for i in ingresos_anuales[::-1]],
+            'Saldo Inicial': [f"${s:,.2f}" for s in saldos_iniciales_anuales[::-1]],
+            'Saldo Final': [f"${s:,.2f}" for s in saldos_finales_anuales[::-1]],
             'Ahorro Real': ahorros_anuales[::-1]
         })
         
